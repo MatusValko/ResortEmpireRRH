@@ -1,0 +1,63 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: efdb05df1531fdb45bedef2089588412, type: 3}
+  m_Name: PrototypeWaves
+  m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.Waves.WaveCatalog
+  Waves:
+  - ArrivalDuration: 90
+    Rooms: 8
+    Food: 6
+    Drinks: 8
+    Relax: 0
+    OceanView: 0
+  - ArrivalDuration: 90
+    Rooms: 12
+    Food: 10
+    Drinks: 16
+    Relax: 0
+    OceanView: 0
+  - ArrivalDuration: 90
+    Rooms: 16
+    Food: 14
+    Drinks: 18
+    Relax: 0
+    OceanView: 0
+  - ArrivalDuration: 90
+    Rooms: 16
+    Food: 14
+    Drinks: 18
+    Relax: 8
+    OceanView: 0
+  - ArrivalDuration: 90
+    Rooms: 20
+    Food: 18
+    Drinks: 22
+    Relax: 16
+    OceanView: 0
+  - ArrivalDuration: 90
+    Rooms: 25
+    Food: 22
+    Drinks: 28
+    Relax: 20
+    OceanView: 0
+  - ArrivalDuration: 90
+    Rooms: 25
+    Food: 22
+    Drinks: 28
+    Relax: 20
+    OceanView: 10
+  - ArrivalDuration: 90
+    Rooms: 31
+    Food: 28
+    Drinks: 35
+    Relax: 25
+    OceanView: 16

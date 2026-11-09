@@ -1,0 +1,7 @@
+{
+    "name": "ResortEmpire.EditModeTests",
+    "rootNamespace": "ResortEmpire.Tests",
+    "references": ["ResortEmpire.Runtime"],
+    "includePlatforms": ["Editor"],
+    "optionalUnityReferences": ["TestAssemblies"]
+}
