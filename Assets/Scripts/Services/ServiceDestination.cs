@@ -12,8 +12,14 @@ namespace ResortEmpire.Services
 
         [SerializeField] private MonoBehaviour Receiver;
 
+        [SerializeField] private bool Unlocked = true;
+
 
         public ServiceType Service => ProvidedService;
+
+        public bool IsUnlocked => Unlocked;
+
+        public bool IsAvailable => Unlocked && isActiveAndEnabled;
 
         public event Action<ServiceType> CapacityAvailable;
 
@@ -33,7 +39,7 @@ namespace ResortEmpire.Services
 
         public bool TryAccept(QueuedRequest request)
         {
-            if (!isActiveAndEnabled || request.Request.Id <= 0 || request.Request.Service != ProvidedService
+            if (!IsAvailable || request.Request.Id <= 0 || request.Request.Service != ProvidedService
                 || Receiver == null || !Receiver.isActiveAndEnabled)
                 return false;
 
@@ -44,11 +50,22 @@ namespace ResortEmpire.Services
         }
 
 
+        public void SetUnlocked(bool unlocked)
+        {
+            if (Unlocked == unlocked)
+                return;
+
+            Unlocked = unlocked;
+            if (Unlocked)
+                NotifyCapacityAvailable();
+        }
+
+
         // Buildings must call this when a service slot becomes available,
         // so Requests can dispatch the next queued request.
         public void NotifyCapacityAvailable()
         {
-            if (isActiveAndEnabled)
+            if (IsAvailable)
                 CapacityAvailable?.Invoke(ProvidedService);
         }
     }

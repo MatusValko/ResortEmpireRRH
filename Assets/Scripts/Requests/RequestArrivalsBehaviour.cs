@@ -156,12 +156,10 @@ namespace ResortEmpire.Requests
         }
 
 
-        // TODO: Temporary availability check based on active GameObjects
-        // Replace with the Buildings system's unlock/purchase state once implemented
         private bool IsAvailable(ServiceType service)
         {
             return Array.Exists(Destinations, destination => destination != null
-                && destination.isActiveAndEnabled && destination.Service == service);
+                && destination.IsAvailable && destination.Service == service);
         }
 
 

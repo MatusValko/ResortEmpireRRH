@@ -441,6 +441,203 @@ namespace ResortEmpire.Tests
         }
 
 
+        [Test]
+        public void AcceptanceFreezesWaitingTimeWithoutCompletingRequest()
+        {
+            RequestArrival request = _requests.First();
+            int starts = 0;
+            _queues.RequestStarted += record =>
+            {
+                starts++;
+                Assert.That(record.IsCompleted, Is.False);
+                Assert.That(_queues.TotalInService, Is.EqualTo(1));
+            };
+            _queues.TryEnqueue(request);
+            _wave.AdvanceTime(7f);
+            _places[request.Service] = 1;
+            _queues.Dispatch(request.Service);
+            _wave.AdvanceTime(500f);
+
+            Assert.That(_queues.TryGetServiceRecord(request.Id, out RequestServiceRecord record), Is.True);
+            Assert.That(record.ServiceStartedSeconds, Is.EqualTo(97d));
+            Assert.That(record.WaitingDurationSeconds, Is.EqualTo(7d));
+            Assert.That(record.IsCompleted, Is.False);
+            Assert.That(starts, Is.EqualTo(1));
+            Assert.That(_queues.TotalWaiting, Is.Zero);
+            Assert.That(_queues.TotalInService, Is.EqualTo(1));
+            Assert.That(_queues.TotalCompleted, Is.Zero);
+            Assert.That(_queues.TotalUnfinished, Is.EqualTo(1));
+        }
+
+
+        [Test]
+        public void CompletesOnlyAcceptedRequestsExactlyOnceAndKeepsWaitingRecord()
+        {
+            RequestArrival[] rooms = _requests.Where(request => request.Service == ServiceType.Rooms).ToArray();
+            int completions = 0;
+            _queues.RequestCompleted += record =>
+            {
+                completions++;
+                Assert.That(record.IsCompleted, Is.True);
+                Assert.That(_queues.TotalCompleted, Is.EqualTo(1));
+            };
+            foreach (RequestArrival request in rooms)
+                _queues.TryEnqueue(request);
+
+            Assert.That(_queues.TryCompleteRequest(rooms[0]), Is.False);
+            Assert.That(_queues.TryCompleteRequest(default), Is.False);
+            _wave.AdvanceTime(12f);
+            _places[ServiceType.Rooms] = 1;
+            _queues.Dispatch(ServiceType.Rooms);
+            Assert.That(_queues.TotalUnfinished, Is.EqualTo(3));
+            Assert.That(_queues.TryCompleteRequest(rooms[0]), Is.True);
+            Assert.That(_queues.TryCompleteRequest(rooms[0]), Is.False);
+            Assert.That(_queues.TryCompleteRequest(rooms[1]), Is.False);
+
+            Assert.That(_queues.TryGetServiceRecord(rooms[0].Id, out RequestServiceRecord record), Is.True);
+            Assert.That(record.IsCompleted, Is.True);
+            Assert.That(record.WaitingDurationSeconds, Is.EqualTo(12d));
+            Assert.That(completions, Is.EqualTo(1));
+            Assert.That(_queues.TotalCompleted, Is.EqualTo(1));
+            Assert.That(_queues.TotalInService, Is.Zero);
+            Assert.That(_queues.TotalUnfinished, Is.EqualTo(2));
+        }
+
+
+        [Test]
+        public void PausedRequestCannotCompleteUntilSimulationResumes()
+        {
+            RequestArrival request = _requests.First();
+            _places[request.Service] = 1;
+            _queues.TryEnqueue(request);
+            _queues.TryGetServiceRecord(request.Id, out RequestServiceRecord started);
+            Assert.That(started.WaitingDurationSeconds, Is.Zero);
+            _wave.TryPause();
+            _wave.AdvanceTime(100f);
+
+            Assert.That(_queues.TryCompleteRequest(request), Is.False);
+            Assert.That(_queues.TotalInService, Is.EqualTo(1));
+            Assert.That(_queues.TotalCompleted, Is.Zero);
+            _wave.TryResume();
+            Assert.That(_queues.TryCompleteRequest(request), Is.True);
+        }
+
+
+        [Test]
+        public void InServiceRequestsPreventQueueResetEvenWhenNoOneIsWaiting()
+        {
+            RequestArrival request = _requests.First();
+            _places[request.Service] = 1;
+            _queues.TryEnqueue(request);
+            _wave.TryReportProgress(new WaveProgress(1, true, 0));
+            _wave.TryConfirmResult();
+            _wave.TryStartWave();
+
+            Assert.That(_queues.TryBeginWave(), Is.False);
+            Assert.That(_queues.TotalWaiting, Is.Zero);
+            Assert.That(_queues.TotalInService, Is.EqualTo(1));
+            Assert.That(_queues.TryGetServiceRecord(request.Id, out _), Is.True);
+        }
+
+
+        [Test]
+        public void NewWaveClearsCompletedRecordsAndRejectsOldCompletion()
+        {
+            RequestArrival request = _requests.First();
+            _places[request.Service] = 1;
+            _queues.TryEnqueue(request);
+            Assert.That(_queues.TryCompleteRequest(request), Is.True);
+            BeginNextWave();
+
+            Assert.That(_queues.TotalCompleted, Is.Zero);
+            Assert.That(_queues.TotalUnfinished, Is.Zero);
+            Assert.That(_queues.TryGetServiceRecord(request.Id, out _), Is.False);
+            Assert.That(_queues.TryCompleteRequest(request), Is.False);
+        }
+
+
+        [Test]
+        public void LongQueueWaitAndCompletionDoNotBypassFifoOrPretendToFreeCapacity()
+        {
+            RequestArrival[] rooms = _requests.Where(request => request.Service == ServiceType.Rooms).ToArray();
+            _places[ServiceType.Rooms] = 1;
+            foreach (RequestArrival request in rooms)
+                _queues.TryEnqueue(request);
+
+            _wave.AdvanceTime(10000f);
+            _queues.Dispatch(ServiceType.Rooms);
+            Assert.That(_queues.GetWaitingCount(ServiceType.Rooms), Is.EqualTo(2));
+            Assert.That(_queues.TryCompleteRequest(rooms[0]), Is.True);
+            Assert.That(_queues.GetWaitingCount(ServiceType.Rooms), Is.EqualTo(2));
+            _places[ServiceType.Rooms] = 1;
+            _queues.Dispatch(ServiceType.Rooms);
+            Assert.That(_delivered.Select(item => item.Request.Id), Is.EqualTo(rooms.Take(2).Select(item => item.Id)));
+            _queues.TryGetServiceRecord(rooms[1].Id, out RequestServiceRecord record);
+            Assert.That(record.WaitingDurationSeconds, Is.EqualTo(10000d));
+        }
+
+
+        [TestCase(false, 0)]
+        [TestCase(true, 3)]
+        public void LockedDestinationIsExcludedFromArrivalPlanning(bool unlocked, int expected)
+        {
+            GameObject host = new("LockedDestinationTest");
+            try
+            {
+                ServiceDestination destination = host.AddComponent<ServiceDestination>();
+                destination.SetUnlocked(unlocked);
+                WaveController wave = new(_catalog);
+                RequestArrivals arrivals = new(wave, service => service == destination.Service && destination.IsAvailable);
+                wave.TryStartWave();
+                arrivals.TryBeginWave();
+                wave.AdvanceTime(90f);
+                arrivals.Tick();
+
+                Assert.That(destination.IsUnlocked, Is.EqualTo(unlocked));
+                Assert.That(arrivals.TotalPlanned, Is.EqualTo(expected));
+                Assert.That(arrivals.TotalGenerated, Is.EqualTo(expected));
+                Assert.That(arrivals.ArrivalsComplete, Is.True);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(host);
+            }
+        }
+
+
+        [Test]
+        public void LockingDestinationKeepsExistingQueueUntilItIsUnlocked()
+        {
+            GameObject host = new("LockDuringWaveTest");
+            try
+            {
+                ServiceDestination destination = host.AddComponent<ServiceDestination>();
+                BeginNextWave();
+                RequestQueues queues = new(_wave, (service, request) => destination.IsAvailable && TryDeliver(service, request));
+                queues.TryBeginWave();
+                _arrivals.RequestCreated += request => queues.TryEnqueue(request);
+                destination.CapacityAvailable += service => queues.Dispatch(service);
+                destination.SetUnlocked(false);
+                _places[ServiceType.Rooms] = 1;
+                _wave.AdvanceTime(30f);
+                _arrivals.Tick();
+                destination.NotifyCapacityAvailable();
+                Assert.That(_delivered, Is.Empty);
+                Assert.That(queues.TotalWaiting, Is.EqualTo(1));
+                destination.SetUnlocked(true);
+                destination.SetUnlocked(true);
+
+                Assert.That(_delivered, Has.Count.EqualTo(1));
+                Assert.That(queues.TotalWaiting, Is.Zero);
+                Assert.That(queues.TotalInService, Is.EqualTo(1));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(host);
+            }
+        }
+
+
         private bool TryDeliver(ServiceType service, QueuedRequest request)
         {
             Assert.That(request.Request.Service, Is.EqualTo(service));

@@ -55,10 +55,10 @@ nevytvára duplikáty. Počas pauzy príchody stoja.
 `RequestArrivalsBehaviour` sa pripája k `WaveStarted` a volá `Tick` v `LateUpdate`,
 po aktualizácii času vĺn. Inicializuje sa v `Start` po všetkých `Awake`;
 `DefaultExecutionOrder(-100)` zabezpečí pripojenie pred bežnými `Start` s poradím 0.
-V scéne má explicitné referencie na kontrolér a tri
-`ServiceDestination`. Aktívny zapnutý destination znamená dostupnú službu pre túto
-etapu; Pool a Bungalows tu zatiaľ nemajú destination. Neskôr môže Buildings
-poskytnúť skutočnú dostupnosť cez rovnakú funkciu, bez zmeny generátora.
+V scéne má explicitné referencie na kontrolér a tri `ServiceDestination`.
+`IsAvailable` vyžaduje odomknutý a aktívny zapnutý destination; Pool a Bungalows
+tu zatiaľ nemajú destination. Buildings nastavuje dostupnosť cez `SetUnlocked(bool)`;
+samotný nákup, podmienky odomknutia a rozširovanie rezortu nie sú implementované.
 Prázdne destinations, chýbajúce referencie alebo zmeškaný štart znamenajú jasnú
 chybu a vypnutie adaptéra. Spustenie vlny patrí do `Start` po inicializácii adaptéra
 alebo do neskoršieho hráčskeho pokynu, nie do `Awake`.
@@ -78,8 +78,8 @@ Pripojený rad preto uloží požiadavku pred prvým pokusom o odovzdanie budove
 `IWaveContext` a funkciu `Func<ServiceType, QueuedRequest, bool>` pre odovzdanie
 budove; nepotrebuje poznať jej implementáciu ani počet miest.
 
-- `TryBeginWave()` inicializuje rad pri štarte vlny. Nezahodí nevyriešený rad
-  predchádzajúcej vlny a nepripojí sa uprostred vlny.
+- `TryBeginWave()` inicializuje rad pri štarte vlny. Nezahodí čakajúce ani práve
+  obsluhované požiadavky predchádzajúcej vlny a nepripojí sa uprostred vlny.
 - `TryEnqueue(RequestArrival)` uloží požiadavku, odmietne duplikáty a cudziu vlnu
   a skúsi odovzdať čelo radu. Staršie požiadavky majú prednosť.
 - `QueuedRequest.WaitingSinceSeconds` je herný čas prijatia do radu v rámci vlny,
@@ -102,10 +102,43 @@ požiadavku neprijal. Pri výnimke sa rad zachová a chyba sa propaguje; ďalš�
 explicitný pokus môže pokračovať. Prijatie a následné vyhodenie výnimky porušuje
 kontrakt a môže pri opakovaní vytvoriť duplicitnú obsluhu.
 
+### Začiatok a dokončenie obsluhy
+
+Po potvrdenom prijatí sa v `RequestQueues` uloží nemenný `RequestServiceRecord`:
+`Queued`, `ServiceStartedSeconds`, `WaitingDurationSeconds` a `IsCompleted`.
+Čakanie je rozdiel herného času začiatku obsluhy a prijatia do radu; potom už
+nerastie. Okamžitý príjem má nulové čakanie, pauza sa do čakania nepripočíta.
+Rad nemá timeout a čakajúci zákazníci neodchádzajú.
+
+- `RequestStarted(record)` oznámi potvrdený začiatok obsluhy.
+- `TryCompleteRequest(RequestArrival)` označí iba aktuálnu, prijatú a ešte
+  nedokončenú požiadavku ako vybavenú a odošle `RequestCompleted(record)`.
+  Cudzia vlna, neznáma/čakajúca požiadavka, opakované dokončenie a pauza sa odmietnu.
+- `TryGetServiceRecord(id, out record)` vráti snapshot prijatej alebo dokončenej
+  požiadavky. Dokončené záznamy zostávajú do štartu ďalšej vlny.
+- `TotalInService`, `TotalCompleted` a `TotalUnfinished` sú read-only počty.
+  `TotalUnfinished` zahŕňa čakajúcich aj obsluhovaných; prijatie ho neznižuje.
+
+Buildings drží prijatý `QueuedRequest` a vykonáva vlastnú obsluhu. Po jej skončení
+zavolá `RequestArrivalsBehaviour.Queues.TryCompleteRequest(request.Request)`.
+Po úspechu uvoľní vlastné miesto a zavolá `ServiceDestination.NotifyCapacityAvailable()`.
+Dokončenie sa nehlási zvnútra `TryAccept`, ale až po jeho návrate `true`.
+Requests nespúšťa časovače obsluhy, neuvoľňuje miesta a nepočíta spokojnosť.
+Buildings musí počas pauzy zastaviť svoju simuláciu; neúspešné hlásenie dokončenia
+nesmie považovať za potvrdené. Udalosti sa posielajú po zmene údajov, ich obsluhy
+majú byť spoľahlivé, na hlavnom vlákne a bez výnimiek.
+
+Zamknutý destination sa vynechá pri plánovaní príchodov a odmieta prijatie.
+Zmena dostupnosti počas vlny nemení jej už naplánované počty: pri dodatočnom
+zamknutí zostanú existujúce a prichádzajúce požiadavky v rade a neodovzdávajú sa
+budove. Odomknutie oznámi dostupnosť a obnoví odovzdávanie vo FIFO poradí;
+už prebiehajúca obsluha sa neruší.
+
 V aktuálnej scéne ešte nie sú implementované Buildings a polia `Receiver` sú
 prázdne, takže požiadavky zostávajú v radoch. Testy používajú iba testovacích
-príjemcov. Dĺžka čakania pri začatí obsluhy, dokončenie požiadavky a hlásenie
-`WaveProgress` patria ďalšej podúlohe; nulový `TotalWaiting` neukončuje vlnu.
+príjemcov. Automatické hlásenie `WaveProgress` zatiaľ nie je pripojené;
+nulový `TotalWaiting` neukončuje vlnu. Pre budúce prepojenie je pripravený
+`TotalUnfinished` vrátane aktívnej obsluhy, nie odhad podľa voľných miest.
 
 ## WaveController
 
@@ -158,7 +191,7 @@ Edit Mode testy v Unity Test Runner:
 - `WaveCatalogTests` — validácia konfigurácie.
 - `ServiceDestinationBindingsTests` (`RequestBindings`) — integračná kontrola služby na troch skutočných prefaboch; závislosť od assetov je tu zámerná.
 - `RequestArrivalsTests` (`RequestArrivals`) — presné počty, časovanie, filtrovanie služieb, pauza a opakované volania; katalóg aj dostupnosť sú vytvorené v pamäti.
-- `RequestQueuesTests` (`RequestQueues`) — FIFO, smerovanie, plné/voľné miesta, čas začiatku čakania, pauza, duplikáty, výnimky a opakované vstupy; príjemcovia a katalóg sú testovacie.
+- `RequestQueuesTests` (`RequestQueues`) — FIFO, smerovanie, plné/voľné miesta, zmrazenie čakania, dokončenie práve raz, počty nedokončených, zamknuté budovy, pauza, duplikáty, výnimky a opakované vstupy; príjemcovia a katalóg sú testovacie.
 - `WaveControllerTests` — stavy, prechody, udalosti, pauza a ukončenie ôsmej vlny.
 - `PrototypeWavePresetTests` — explicitná kontrola pôvodných hodnôt z Build Documentu.
 

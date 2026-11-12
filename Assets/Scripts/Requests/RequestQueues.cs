@@ -18,10 +18,22 @@ namespace ResortEmpire.Requests
 
         private readonly HashSet<ServiceType> _dispatching = new();
 
+        private readonly Dictionary<long, RequestServiceRecord> _serviced = new();
+
 
         public int WaveNumber { get; private set; }
 
         public long TotalWaiting { get; private set; }
+
+        public long TotalInService { get; private set; }
+
+        public long TotalCompleted { get; private set; }
+
+        public long TotalUnfinished => TotalWaiting + TotalInService;
+
+        public event Action<RequestServiceRecord> RequestStarted;
+
+        public event Action<RequestServiceRecord> RequestCompleted;
 
 
         public RequestQueues(IWaveContext wave, Func<ServiceType, QueuedRequest, bool> tryDeliver)
@@ -36,11 +48,13 @@ namespace ResortEmpire.Requests
 
         public bool TryBeginWave()
         {
-            if (_dispatching.Count != 0 || TotalWaiting != 0 || _wave.State != WaveState.WaveActive
+            if (_dispatching.Count != 0 || TotalUnfinished != 0 || _wave.State != WaveState.WaveActive
                 || _wave.ElapsedSeconds != 0 || _wave.CurrentWaveNumber <= WaveNumber)
                 return false;
 
             _receivedIds.Clear();
+            _serviced.Clear();
+            TotalCompleted = 0;
             WaveNumber = _wave.CurrentWaveNumber;
 
             return true;
@@ -91,12 +105,17 @@ namespace ResortEmpire.Requests
             {
                 while (IsActiveWave() && queue.TryPeek(out QueuedRequest request))
                 {
+                    double startedAt = _wave.ElapsedSeconds;
                     if (!_tryDeliver(service, request))
                         break;
 
                     queue.Dequeue();
                     TotalWaiting--;
+                    RequestServiceRecord record = new(request, startedAt);
+                    _serviced.Add(request.Request.Id, record);
+                    TotalInService++;
                     delivered++;
+                    RequestStarted?.Invoke(record);
                 }
             }
             finally
@@ -105,6 +124,29 @@ namespace ResortEmpire.Requests
             }
 
             return delivered;
+        }
+
+
+        public bool TryGetServiceRecord(long requestId, out RequestServiceRecord record)
+        {
+            return _serviced.TryGetValue(requestId, out record);
+        }
+
+
+        public bool TryCompleteRequest(RequestArrival request)
+        {
+            if (!IsActiveWave() || request.WaveNumber != WaveNumber
+                || !_serviced.TryGetValue(request.Id, out RequestServiceRecord record)
+                || record.IsCompleted || record.Queued.Request.Service != request.Service)
+                return false;
+
+            RequestServiceRecord completed = new(record.Queued, record.ServiceStartedSeconds, true);
+            _serviced[request.Id] = completed;
+            TotalInService--;
+            TotalCompleted++;
+            RequestCompleted?.Invoke(completed);
+
+            return true;
         }
 
 
