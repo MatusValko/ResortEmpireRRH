@@ -296,9 +296,10 @@ namespace ResortEmpire.Tests
         }
 
 
-        [TestCase(true)]
-        [TestCase(false)]
-        public void InvalidDestinationsOrLateConnectionDisableUnityAdapter(bool missingDestination)
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        public void InvalidDestinationsOrLateConnectionDisableUnityAdapter(int scenario)
         {
             GameObject host = new("InvalidRequestArrivalsTest");
             host.SetActive(false);
@@ -313,15 +314,21 @@ namespace ResortEmpire.Tests
                 RequestArrivalsBehaviour behaviour = host.AddComponent<RequestArrivalsBehaviour>();
                 SerializedObject settings = new(behaviour);
                 settings.FindProperty("Waves").objectReferenceValue = waves;
-                if (missingDestination)
-                    settings.FindProperty("Destinations").arraySize = 1;
-                else
+                SerializedProperty destinations = settings.FindProperty("Destinations");
+                destinations.arraySize = scenario == 0 ? 0 : 1;
+                if (scenario == 2)
+                {
+                    destinations.GetArrayElementAtIndex(0).objectReferenceValue = host.AddComponent<ServiceDestination>();
                     waves.Controller.TryStartWave();
+                }
 
                 settings.ApplyModifiedPropertiesWithoutUndo();
-                string problem = missingDestination
-                    ? "Service destinations contain an unassigned reference."
-                    : "Connect arrivals before starting a wave.";
+                string problem = scenario switch
+                {
+                    0 => "At least one service destination must be assigned.",
+                    1 => "Service destinations contain an unassigned reference.",
+                    _ => "Connect arrivals before starting a wave."
+                };
                 LogAssert.Expect(LogType.Error, $"RequestArrivalsBehaviour on 'InvalidRequestArrivalsTest': {problem}");
                 MethodInfo start = typeof(RequestArrivalsBehaviour).GetMethod("Start", BindingFlags.Instance | BindingFlags.NonPublic);
                 Assert.DoesNotThrow(() => start.Invoke(behaviour, null));

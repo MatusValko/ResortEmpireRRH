@@ -26,8 +26,9 @@ Korene prefabov Reception, Restaurant a BeachBar majú komponent `ServiceDestina
 Rooms → Reception, Food → Restaurant, Drinks → BeachBar.
 Ostatné systémy čítajú `ServiceDestination.Service`; názov GameObjectu ani text
 nad budovou nie sú identifikátorom služby. Používa sa existujúci `ServiceType`.
-Komponent iba deklaruje službu, nerieši dostupnosť, kapacitu, rady ani obsluhu.
-Smerovanie do obsluhy a rady pribudnú v ďalších podúlohách.
+Voliteľné pole `Receiver` odkazuje na komponent Buildings implementujúci
+`IRequestReceiver`. `ServiceDestination` sprostredkuje prijatie požiadavky a
+oznámenie voľného miesta; sám nepočíta kapacitu ani nevykonáva obsluhu.
 
 ### Postupný príchod požiadaviek
 
@@ -52,21 +53,59 @@ nevytvára duplikáty. Počas pauzy príchody stoja.
   uplynutí D a doručení poslednej porcie. Aj nulový dostupný demand čaká do D.
 
 `RequestArrivalsBehaviour` sa pripája k `WaveStarted` a volá `Tick` v `LateUpdate`,
-po aktualizácii času vĺn. V scéne má explicitné referencie na kontrolér a tri
+po aktualizácii času vĺn. Inicializuje sa v `Start` po všetkých `Awake`;
+`DefaultExecutionOrder(-100)` zabezpečí pripojenie pred bežnými `Start` s poradím 0.
+V scéne má explicitné referencie na kontrolér a tri
 `ServiceDestination`. Aktívny zapnutý destination znamená dostupnú službu pre túto
 etapu; Pool a Bungalows tu zatiaľ nemajú destination. Neskôr môže Buildings
 poskytnúť skutočnú dostupnosť cez rovnakú funkciu, bez zmeny generátora.
-Chýbajúce referencie alebo zmeškaný štart znamenajú jasnú chybu a vypnutie adaptéra.
+Prázdne destinations, chýbajúce referencie alebo zmeškaný štart znamenajú jasnú
+chybu a vypnutie adaptéra. Spustenie vlny patrí do `Start` po inicializácii adaptéra
+alebo do neskoršieho hráčskeho pokynu, nie do `Awake`.
 
-Táto podúloha nevytvára rady, neobsluhuje požiadavky a neposiela odhad
-`UnfinishedRequests` do `WaveController`. `ArrivalsFinished` nie je dokončenie vlny.
-Po pripojení radov a obsluhy bude ich vlastník posielať skutočný `WaveProgress`.
+Generátor neobsluhuje požiadavky a neposiela odhad `UnfinishedRequests` do
+`WaveController`. `ArrivalsFinished` nie je dokončenie vlny. Po pripojení
+sledovania obsluhy bude vlastník požiadaviek posielať skutočný `WaveProgress`.
 Obslužné callbacky majú byť na hlavnom vlákne a nemajú vyhadzovať výnimky.
 `RequestCreated` oznamuje vytvorenie, nie potvrdené prijatie radom. Počty a ID sú
 aktualizované pred callbackom. Ak odberateľ vyhodí výnimku, tá sa propaguje;
-požiadavka sa nevracia späť ani automaticky nedoručuje znovu. Pri integrácii radu
-treba preveriť zlyhanie prijatia a konzistenciu jeho počtov, nie potichu ignorovať
-výnimku. Potvrdzovanie doručenia a opakované pokusy zatiaľ nie sú implementované.
+požiadavka sa nevracia späť ani automaticky nedoručuje znovu generátorom.
+Pripojený rad preto uloží požiadavku pred prvým pokusom o odovzdanie budove.
+
+### Smerovanie a FIFO rady
+
+`RequestQueues` vlastní samostatný FIFO rad pre každý `ServiceType`. Dostane
+`IWaveContext` a funkciu `Func<ServiceType, QueuedRequest, bool>` pre odovzdanie
+budove; nepotrebuje poznať jej implementáciu ani počet miest.
+
+- `TryBeginWave()` inicializuje rad pri štarte vlny. Nezahodí nevyriešený rad
+  predchádzajúcej vlny a nepripojí sa uprostred vlny.
+- `TryEnqueue(RequestArrival)` uloží požiadavku, odmietne duplikáty a cudziu vlnu
+  a skúsi odovzdať čelo radu. Staršie požiadavky majú prednosť.
+- `QueuedRequest.WaitingSinceSeconds` je herný čas prijatia do radu v rámci vlny,
+  nie plánovaný termín príchodu. Opakované pokusy ho nemenia; pauza čas neposúva.
+- `Dispatch(service)` odovzdáva požiadavky, kým ich príjemca prijíma. Požiadavka
+  sa odstráni iba po `true`; `false` ponechá čelo aj ostatné požiadavky v rade.
+- `TotalWaiting`, `GetWaitingCount(service)` a `TryPeekWaiting` poskytujú read-only
+  prehľad. Prijaté požiadavky už nie sú v tomto počte, ale ešte nie sú vybavené.
+
+`RequestArrivalsBehaviour` pripája `RequestCreated` k radom a smeruje podľa
+`ServiceDestination.Service`. Nový príchod, návrat z pauzy, opätovné zapnutie
+adaptéra alebo udalosť `CapacityAvailable` spustia pokus o odovzdanie.
+Kapacita sa nekontroluje každý snímok. Počas pauzy sa nič neodovzdáva.
+
+Buildings má implementovať `IRequestReceiver.TryAccept(QueuedRequest)`:
+vrátiť `true` až po prijatí a rezervovaní miesta, pri plnej budove `false`.
+Po uvoľnení miesta zavolá `ServiceDestination.NotifyCapacityAvailable()`.
+Príjemca musí bežať na hlavnom vlákne; `false` alebo výnimka znamenajú, že
+požiadavku neprijal. Pri výnimke sa rad zachová a chyba sa propaguje; ďalší
+explicitný pokus môže pokračovať. Prijatie a následné vyhodenie výnimky porušuje
+kontrakt a môže pri opakovaní vytvoriť duplicitnú obsluhu.
+
+V aktuálnej scéne ešte nie sú implementované Buildings a polia `Receiver` sú
+prázdne, takže požiadavky zostávajú v radoch. Testy používajú iba testovacích
+príjemcov. Dĺžka čakania pri začatí obsluhy, dokončenie požiadavky a hlásenie
+`WaveProgress` patria ďalšej podúlohe; nulový `TotalWaiting` neukončuje vlnu.
 
 ## WaveController
 
@@ -119,6 +158,7 @@ Edit Mode testy v Unity Test Runner:
 - `WaveCatalogTests` — validácia konfigurácie.
 - `ServiceDestinationBindingsTests` (`RequestBindings`) — integračná kontrola služby na troch skutočných prefaboch; závislosť od assetov je tu zámerná.
 - `RequestArrivalsTests` (`RequestArrivals`) — presné počty, časovanie, filtrovanie služieb, pauza a opakované volania; katalóg aj dostupnosť sú vytvorené v pamäti.
+- `RequestQueuesTests` (`RequestQueues`) — FIFO, smerovanie, plné/voľné miesta, čas začiatku čakania, pauza, duplikáty, výnimky a opakované vstupy; príjemcovia a katalóg sú testovacie.
 - `WaveControllerTests` — stavy, prechody, udalosti, pauza a ukončenie ôsmej vlny.
 - `PrototypeWavePresetTests` — explicitná kontrola pôvodných hodnôt z Build Documentu.
 
