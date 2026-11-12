@@ -1,0 +1,17 @@
+{
+    "name": "ResortEmpire.Buildings",
+    "rootNamespace": "ResortEmpire.Buildings",
+    "references": [
+        "GUID:ec723a5e5d4fb81468d2ad55a52342ae",
+        "GUID:9ba2eabb006daa74488096c1d82be0d3"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
