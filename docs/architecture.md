@@ -19,6 +19,15 @@
 
 Požiadavky zamknutých služieb sa negenerujú, kým hráč príslušnú budovu nezakúpi.
 
+### Priradenie služby budove
+
+Korene prefabov Reception, Restaurant a BeachBar majú komponent `ServiceDestination`:
+Rooms → Reception, Food → Restaurant, Drinks → BeachBar.
+Ostatné systémy čítajú `ServiceDestination.Service`; názov GameObjectu ani text
+nad budovou nie sú identifikátorom služby. Používa sa existujúci `ServiceType`.
+Komponent iba deklaruje službu, nerieši dostupnosť, kapacitu, rady ani obsluhu.
+Vytváranie a odosielanie požiadaviek pribudne v ďalších podúlohách.
+
 ## WaveController
 
 `WaveController` je samostatná C# trieda, ktorá spravuje stav a priebeh vĺn. `WaveControllerBehaviour` zabezpečuje napojenie na Unity.
@@ -68,6 +77,7 @@ Konkrétne rozhrania medzi Requests a Buildings treba potvrdiť s ich autormi.
 Edit Mode testy v Unity Test Runner:
 
 - `WaveCatalogTests` — validácia konfigurácie.
+- `ServiceDestinationBindingsTests` (`RequestBindings`) — integračná kontrola služby na troch skutočných prefaboch; závislosť od assetov je tu zámerná.
 - `WaveControllerTests` — stavy, prechody, udalosti, pauza a ukončenie ôsmej vlny.
 - `PrototypeWavePresetTests` — explicitná kontrola pôvodných hodnôt z Build Documentu.
 
