@@ -96,7 +96,7 @@ namespace ResortEmpire.Tests
         [TestCase(float.NegativeInfinity)]
         public void RejectsInvalidDuration(float duration)
         {
-            SetFirstWaveValue("ArrivalDuration", duration, false);
+            SetFirstWaveDuration(duration);
 
             Assert.That(_catalog.TryValidate(out _), Is.False);
         }
@@ -109,7 +109,7 @@ namespace ResortEmpire.Tests
         [TestCase("OceanView")]
         public void RejectsNegativeRequestCount(string field)
         {
-            SetFirstWaveValue(field, -1, true);
+            SetFirstWaveCount(field, -1);
 
             Assert.That(_catalog.TryValidate(out _), Is.False);
         }
@@ -127,7 +127,7 @@ namespace ResortEmpire.Tests
         [Test]
         public void RejectsWaveWithoutAnyRequests()
         {
-            SetFirstWaveValue("Rooms", 0, true);
+            SetFirstWaveCount("Rooms", 0);
 
             Assert.That(_catalog.TryValidate(out string error), Is.False);
             Assert.That(error, Does.Contain("Wave 1"));
@@ -135,28 +135,51 @@ namespace ResortEmpire.Tests
 
 
         [Test]
-        public void RequestTotalDoesNotOverflow()
+        public void AcceptsMaximumDemandForAllServices()
         {
             foreach (string field in new[] { "Rooms", "Food", "Drinks", "Relax", "OceanView" })
             {
-                SerializedObject serialized = new(_catalog);
-                serialized.FindProperty("Waves").GetArrayElementAtIndex(0).FindPropertyRelative(field).intValue = int.MaxValue;
-                serialized.ApplyModifiedPropertiesWithoutUndo();
+                SetFirstWaveCount(field, WaveDefinition.MaxRequestsPerService);
             }
 
             Assert.That(_catalog.TryValidate(out _), Is.True);
-            Assert.That(_catalog.GetWave(1).TotalRequestCount, Is.EqualTo(5L * int.MaxValue));
+            Assert.That(_catalog.GetWave(1).TotalRequestCount, Is.EqualTo(5L * WaveDefinition.MaxRequestsPerService));
         }
 
 
-        private void SetFirstWaveValue(string field, float value, bool isCount)
+        [TestCase("Rooms", WaveDefinition.MaxRequestsPerService + 1)]
+        [TestCase("Food", WaveDefinition.MaxRequestsPerService + 1)]
+        [TestCase("Drinks", WaveDefinition.MaxRequestsPerService + 1)]
+        [TestCase("Relax", WaveDefinition.MaxRequestsPerService + 1)]
+        [TestCase("OceanView", WaveDefinition.MaxRequestsPerService + 1)]
+        [TestCase("Rooms", int.MaxValue)]
+        [TestCase("Food", int.MaxValue)]
+        [TestCase("Drinks", int.MaxValue)]
+        [TestCase("Relax", int.MaxValue)]
+        [TestCase("OceanView", int.MaxValue)]
+        public void RejectsExcessiveDemand(string field, int count)
+        {
+            SetFirstWaveCount(field, count);
+
+            Assert.That(_catalog.TryValidate(out string error), Is.False);
+            Assert.That(error, Does.Contain(WaveDefinition.MaxRequestsPerService.ToString()));
+            Assert.Throws<InvalidOperationException>(() => _catalog.GetWave(1));
+        }
+
+
+        private void SetFirstWaveCount(string field, int count)
         {
             SerializedObject serialized = new(_catalog);
-            SerializedProperty property = serialized.FindProperty("Waves").GetArrayElementAtIndex(0).FindPropertyRelative(field);
-            if (isCount)
-                property.intValue = (int)value;
-            else
-                property.floatValue = value;
+            serialized.FindProperty("Waves").GetArrayElementAtIndex(0).FindPropertyRelative(field).intValue = count;
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+
+        private void SetFirstWaveDuration(float duration)
+        {
+            SerializedObject serialized = new(_catalog);
+            serialized.FindProperty("Waves").GetArrayElementAtIndex(0).FindPropertyRelative("ArrivalDuration").floatValue = duration;
 
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }

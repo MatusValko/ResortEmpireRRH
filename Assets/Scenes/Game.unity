@@ -763,6 +763,55 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &581217407
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 581217409}
+  - component: {fileID: 581217408}
+  m_Layer: 0
+  m_Name: RequestArrivals
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &581217408
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 581217407}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 752b3f8602aa02a4f8e377deddaa50c3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.Requests.RequestArrivalsBehaviour
+  Waves: {fileID: 2038617485}
+  Destinations:
+  - {fileID: 1692446275}
+  - {fileID: 1936262263}
+  - {fileID: 1382926579}
+--- !u!4 &581217409
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 581217407}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &706934165
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1013,6 +1062,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8201186169364588515, guid: b8b16844b853b244789efab8a1915e4b, type: 3}
   m_PrefabInstance: {fileID: 1382926577}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1382926579 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7314188293885768996, guid: b8b16844b853b244789efab8a1915e4b, type: 3}
+  m_PrefabInstance: {fileID: 1382926577}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d77516f55b29fc4bba5adab0a6c9365, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.Services.ServiceDestination
 --- !u!114 &1540364776
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1137,6 +1197,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8080418213617043472, guid: d724f70da3cf2a9439c359486a86946e, type: 3}
   m_PrefabInstance: {fileID: 1692446273}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1692446275 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 885221545905090363, guid: d724f70da3cf2a9439c359486a86946e, type: 3}
+  m_PrefabInstance: {fileID: 1692446273}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d77516f55b29fc4bba5adab0a6c9365, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.Services.ServiceDestination
 --- !u!114 &1892364815
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1227,6 +1298,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5122100742260518495, guid: 2987bb100dcb2ac499bdc342e04e80f9, type: 3}
   m_PrefabInstance: {fileID: 1936262261}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1936262263 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2347256130228801129, guid: 2987bb100dcb2ac499bdc342e04e80f9, type: 3}
+  m_PrefabInstance: {fileID: 1936262261}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d77516f55b29fc4bba5adab0a6c9365, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.Services.ServiceDestination
 --- !u!1 &2038617484
 GameObject:
   m_ObjectHideFlags: 0
@@ -1281,3 +1363,4 @@ SceneRoots:
   - {fileID: 1262821432}
   - {fileID: 423036100}
   - {fileID: 2038617486}
+  - {fileID: 581217409}

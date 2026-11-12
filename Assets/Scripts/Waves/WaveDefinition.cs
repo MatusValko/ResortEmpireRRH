@@ -21,6 +21,9 @@ namespace ResortEmpire.Waves
         [SerializeField, Min(0)] private int OceanView;
 
 
+        public const int MaxRequestsPerService = 1000;
+
+
         public float ArrivalDurationSeconds => ArrivalDuration;
 
         public long TotalRequestCount => (long)Rooms + Food + Drinks + Relax + OceanView;
@@ -52,6 +55,14 @@ namespace ResortEmpire.Waves
             if (Rooms < 0 || Food < 0 || Drinks < 0 || Relax < 0 || OceanView < 0)
             {
                 error = "Request counts must not be negative.";
+
+                return false;
+            }
+
+            if (Rooms > MaxRequestsPerService || Food > MaxRequestsPerService || Drinks > MaxRequestsPerService
+                || Relax > MaxRequestsPerService || OceanView > MaxRequestsPerService)
+            {
+                error = $"Request counts must not exceed {MaxRequestsPerService} per service.";
 
                 return false;
             }
