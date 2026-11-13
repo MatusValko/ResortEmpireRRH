@@ -84,8 +84,9 @@ namespace ResortEmpire.UI
             Worker chosen = Workers.chosenWorker;
             bool selectingTarget = chosen != null;
             MoveButton.interactable = Windows.CanMoveWorkers && Workers.isActiveAndEnabled && Destination.IsAvailable
-                && (selectingTarget ? !Building.HasWorker && chosen.assignedBuilding != null
-                    : Building.HasWorker && Building.assignedWorker != null);
+                && Building.isActiveAndEnabled && Building.workerPoint != null
+                && (selectingTarget ? chosen.isActiveAndEnabled && !Building.HasWorker && Building.assignedWorker == null
+                    : Building.HasWorker && Building.assignedWorker != null && Building.assignedWorker.isActiveAndEnabled);
             string text = selectingTarget ? "Presunúť sem" : "Presunúť pracovníka";
             if (MoveButtonText.text != text)
                 MoveButtonText.text = text;

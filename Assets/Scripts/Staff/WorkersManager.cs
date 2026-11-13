@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 
+using ResortEmpire.Services;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -33,7 +34,8 @@ public class WorkersManagers : MonoBehaviour
         mode = ManagerMode.free;
         
         chosenWorker = null;
-        UI.SetActive(false);
+        if (UI != null)
+            UI.SetActive(false);
 
         workers = GameObject.FindGameObjectsWithTag("Worker");
         buildings = GameObject.FindGameObjectsWithTag("Building");
@@ -42,9 +44,9 @@ public class WorkersManagers : MonoBehaviour
 
         foreach (GameObject buildingObject in buildings)
         {
-            ServiceBuilding building = buildingObject.GetComponent<ServiceBuilding>();
+            ServiceBuilding building = buildingObject != null ? buildingObject.GetComponent<ServiceBuilding>() : null;
 
-            if (building != null && !building.HasWorker)
+            if (CanAssignWorker(building))
             {
                 availableBuildings.Add(building);
             }
@@ -54,7 +56,7 @@ public class WorkersManagers : MonoBehaviour
         {
             Worker worker = workerObject.GetComponent<Worker>();
 
-            if (worker == null || worker.assignedBuilding != null)
+            if (worker == null || !worker.isActiveAndEnabled || worker.assignedBuilding != null)
                 continue;
 
             if (availableBuildings.Count == 0)
@@ -98,9 +100,11 @@ public class WorkersManagers : MonoBehaviour
             {
                 Vector2 tapPosition = touch.position.ReadValue();
                 CastRay(tapPosition);
+
+                return;
             }
         }
-        else if (Mouse.current != null &&
+        if (Mouse.current != null &&
                  Mouse.current.leftButton.wasPressedThisFrame)
         {
             Vector2 clickPosition = Mouse.current.position.ReadValue();
@@ -110,6 +114,9 @@ public class WorkersManagers : MonoBehaviour
 
     private void CastRay(Vector2 screenPosition)
     {
+        if (mainCamera == null || !mainCamera.isActiveAndEnabled || !mainCamera.pixelRect.Contains(screenPosition))
+            return;
+
         if (EventSystem.current != null)
         {
             var pointer = new PointerEventData(EventSystem.current) { position = screenPosition };
@@ -127,54 +134,63 @@ public class WorkersManagers : MonoBehaviour
 
         if (Physics.Raycast(ray, out RaycastHit hit, 100f, interactableLayer))
         {
-            Debug.Log("Hit: " + hit.collider.name);
-            GameObject obj = hit.collider.gameObject;
+            Worker worker = hit.collider.GetComponentInParent<Worker>();
+            if (worker != null)
+            {
+                ChooseWorker(worker);
 
-            if(obj.CompareTag("Worker")){
-                ChooseWorker(obj.GetComponent<Worker>());
-                Debug.Log("Worker chosen");
+                return;
             }
 
-            if(obj.CompareTag("Building") && mode == ManagerMode.worker && chosenWorker){
-                TryAssignWorker(obj.GetComponent<ServiceBuilding>(), chosenWorker);
-            }
+            ServiceBuilding building = hit.collider.GetComponentInParent<ServiceBuilding>();
+            if (building != null && mode == ManagerMode.worker && chosenWorker != null)
+                TryAssignWorker(building, chosenWorker);
         }
     }
 
     
 
     
-    public void TryAssignWorker(ServiceBuilding _building, Worker _worker){
-        if(_building.HasWorker == false && _worker != null){
-            AssignWorker(_building, _worker);
-        }
-        else
+    public void TryAssignWorker(ServiceBuilding building, Worker worker)
+    {
+        AssignWorker(building, worker);
+    }
+
+
+    public void AssignWorker(ServiceBuilding building, Worker worker)
+    {
+        if (worker == null || !worker.isActiveAndEnabled || !CanAssignWorker(building))
         {
-            Debug.Log("Building already has a worker assigned or no worker chosen.");
+            Debug.Log("Worker or target building is unavailable.");
             CancelWorkerAssignment();
+
+            return;
         }
-    }
-    
-    public void AssignWorker(ServiceBuilding building, Worker worker){
-        if(chosenWorker.assignedBuilding != null)
-        {
-            chosenWorker.assignedBuilding.ResetWorkerAssignment();
-        }
+
+        if (worker.assignedBuilding != null)
+            worker.assignedBuilding.ResetWorkerAssignment();
 
         building.HasWorker = true;
-        chosenWorker.assignedBuilding = building;
-        building.assignedWorker = chosenWorker;
-        chosenWorker.MoveToPoint(building.workerPoint);
+        worker.assignedBuilding = building;
+        building.assignedWorker = worker;
+        worker.MoveToPoint(building.workerPoint);
         
         CancelWorkerAssignment();
     }
 
     public void ChooseWorker(Worker worker){
+        if (worker == null || !worker.isActiveAndEnabled)
+        {
+            CancelWorkerAssignment();
+
+            return;
+        }
 
         chosenWorker = worker;
         mode = ManagerMode.worker;
         HighlightAvailableBuildings(true);
-        UI.SetActive(true);
+        if (UI != null)
+            UI.SetActive(true);
 
     }
 
@@ -182,17 +198,33 @@ public class WorkersManagers : MonoBehaviour
         chosenWorker = null;
         mode = ManagerMode.free;
         CancelHighlightBuildings();
-        UI.SetActive(false);
+        if (UI != null)
+            UI.SetActive(false);
+    }
+
+
+    private static bool CanAssignWorker(ServiceBuilding building)
+    {
+        if (building == null || !building.isActiveAndEnabled || building.workerPoint == null
+            || building.HasWorker || building.assignedWorker != null)
+            return false;
+
+        ServiceDestination destination = building.GetComponentInParent<ServiceDestination>();
+
+        return destination != null && destination.IsAvailable;
     }
 
     
    public void HighlightAvailableBuildings(bool highlight)
     {
+        if (buildings == null)
+            return;
+
         foreach (GameObject buildingObject in buildings)
         {
-            ServiceBuilding building = buildingObject.GetComponent<ServiceBuilding>();
+            ServiceBuilding building = buildingObject != null ? buildingObject.GetComponent<ServiceBuilding>() : null;
 
-            if (building == null || building.HasWorker)
+            if (!CanAssignWorker(building))
                 continue;
 
             Renderer[] renderers = buildingObject.GetComponentsInChildren<Renderer>();
@@ -219,9 +251,12 @@ public class WorkersManagers : MonoBehaviour
 
     public void CancelHighlightBuildings()
     {
+        if (buildings == null)
+            return;
+
         foreach (GameObject buildingObject in buildings)
         {
-            ServiceBuilding building = buildingObject.GetComponent<ServiceBuilding>();
+            ServiceBuilding building = buildingObject != null ? buildingObject.GetComponent<ServiceBuilding>() : null;
 
             if (building == null)
                 continue;

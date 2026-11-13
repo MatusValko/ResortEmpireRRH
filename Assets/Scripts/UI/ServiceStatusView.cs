@@ -91,7 +91,7 @@ namespace ResortEmpire.UI
             if (waiting != _waiting || hasWorker != _hasWorker)
             {
                 // shortcut: Capacity is a UI example, replace when Buildings exposes capacity.
-                BuildingText.text = $"Miesta: 3 (ukážka)\nRad: {waiting}\nPracovník: {(hasWorker ? "áno" : "nie")}";
+                BuildingText.text = $"Miesta: 3 (ukážka)\nRad: {waiting}  ·  Pracovník: {(hasWorker ? "áno" : "nie")}";
                 _waiting = waiting;
                 _hasWorker = hasWorker;
             }
@@ -119,8 +119,20 @@ namespace ResortEmpire.UI
                 return;
 
             Camera uiCamera = _labelCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : _labelCanvas.worldCamera;
-            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_labelParent, screenPosition, uiCamera, out Vector2 position))
-                BuildingLabel.anchoredPosition = position;
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_labelParent, screenPosition, uiCamera, out Vector2 position))
+                return;
+
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(_labelParent, ResortCamera.pixelRect.min, uiCamera, out Vector2 min);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(_labelParent, ResortCamera.pixelRect.max, uiCamera, out Vector2 max);
+            Vector2 size = BuildingLabel.rect.size;
+            Vector2 pivot = BuildingLabel.pivot;
+            position.x = size.x <= max.x - min.x
+                ? Mathf.Clamp(position.x, min.x + size.x * pivot.x, max.x - size.x * (1f - pivot.x))
+                : (min.x + max.x) * 0.5f + size.x * (pivot.x - 0.5f);
+            position.y = size.y <= max.y - min.y
+                ? Mathf.Clamp(position.y, min.y + size.y * pivot.y, max.y - size.y * (1f - pivot.y))
+                : (min.y + max.y) * 0.5f + size.y * (pivot.y - 0.5f);
+            BuildingLabel.anchoredPosition = position;
         }
 
 

@@ -23,6 +23,8 @@ namespace ResortEmpire.UI
 
         [SerializeField] private TMPro.TMP_Text WindowButtonText;
 
+        [SerializeField] private UnityEngine.UI.ScrollRect WindowScroll;
+
         [SerializeField] private UnityEngine.UI.Button ResultPreviewButton;
 
         [SerializeField] private UnityEngine.UI.Button AreaButton;
@@ -56,7 +58,7 @@ namespace ResortEmpire.UI
             if (Waves == null || Waves.Controller == null || Requests == null
                 || Requests.Arrivals == null || Requests.Queues == null || Workers == null
                 || Workers.UI == null || ModalOverlay == null || WindowTitle == null
-                || WindowText == null || WindowButton == null || WindowButtonText == null
+                || WindowText == null || WindowButton == null || WindowButtonText == null || WindowScroll == null
                 || ResultPreviewButton == null || AreaButton == null)
             {
                 Debug.LogError($"{nameof(ResortWindows)} on '{name}': Assign initialized systems and all window references.", this);
@@ -174,6 +176,9 @@ namespace ResortEmpire.UI
             WindowText.text = text;
             WindowButtonText.text = confirmingResult ? "Pokračovať" : "Zavrieť";
             ModalOverlay.SetActive(true);
+            Canvas.ForceUpdateCanvases();
+            WindowScroll.StopMovement();
+            WindowScroll.verticalNormalizedPosition = 1f;
             UpdateWorkerInput();
         }
 
