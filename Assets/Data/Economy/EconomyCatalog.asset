@@ -12,15 +12,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 70512b4135b137a42890baf4a5c68e0e, type: 3}
   m_Name: EconomyCatalog
   m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.Economy.EconomyCatalog
-  StartingCoins: 500
+  StartingCoins: 0
   Rewards:
   - Service: 0
-    Coins: 50
+    Coins: 16
   - Service: 1
-    Coins: 20
+    Coins: 16
   - Service: 2
-    Coins: 15
+    Coins: 16
   - Service: 3
-    Coins: 30
+    Coins: 16
   - Service: 4
-    Coins: 40
+    Coins: 16
+  RatingMultipliers:
+  - Rating: 0
+    Multiplier: 0.4
+  - Rating: 1
+    Multiplier: 0.6
+  - Rating: 2
+    Multiplier: 0.8
+  - Rating: 3
+    Multiplier: 1
+  - Rating: 4
+    Multiplier: 1.2
+  - Rating: 5
+    Multiplier: 1.3
