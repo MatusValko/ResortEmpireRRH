@@ -10,6 +10,11 @@ public class WorkersManagers : MonoBehaviour
     public Worker chosenWorker;
     public ManagerMode mode;
 
+    /// <summary>
+    /// Fired when a worker is assigned or transferred to a building: (worker, previousBuilding, newBuilding).
+    /// </summary>
+    public event System.Action<Worker, ServiceBuildingBehaviour, ServiceBuildingBehaviour> WorkerAssigned;
+
     private bool isActive = true;
 
     [SerializeField] private Camera mainCamera;
@@ -139,15 +144,25 @@ public class WorkersManagers : MonoBehaviour
     }
     
     public void AssignWorker(ServiceBuildingBehaviour building, Worker worker){
-        if(chosenWorker.assignedBuilding != null)
+        Worker targetWorker = worker != null ? worker : chosenWorker;
+        if (targetWorker == null || building == null)
         {
-            chosenWorker.assignedBuilding.ResetWorkerAssignment();
+            CancelWorkerAssignment();
+            return;
+        }
+
+        ServiceBuildingBehaviour previousBuilding = targetWorker.assignedBuilding;
+        if(previousBuilding != null)
+        {
+            previousBuilding.ResetWorkerAssignment();
         }
 
         building.HasWorker = true;
-        chosenWorker.assignedBuilding = building;
-        building.assignedWorker = chosenWorker;
-        chosenWorker.MoveToPoint(building.workerPoint);
+        targetWorker.assignedBuilding = building;
+        building.assignedWorker = targetWorker;
+        targetWorker.MoveToPoint(building.workerPoint);
+
+        WorkerAssigned?.Invoke(targetWorker, previousBuilding, building);
         
         CancelWorkerAssignment();
     }
