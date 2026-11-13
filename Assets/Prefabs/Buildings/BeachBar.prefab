@@ -335,6 +335,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8201186169364588515}
   - component: {fileID: 7314188293885768996}
+  - component: {fileID: 4505698325218255092}
   m_Layer: 0
   m_Name: BeachBar
   m_TagString: Untagged
@@ -373,6 +374,27 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.Services.ServiceDestination
   ProvidedService: 2
+  Receiver: {fileID: 0}
+  Unlocked: 1
+--- !u!114 &4505698325218255092
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4890220056673366160}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc1627f0bad31ab458eb849f540e3c50, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ResortEmpire.Runtime::ServiceBuilding
+  HasWorker: 0
+  HighlightIntensity: 1.08
+  assignedWorker: {fileID: 0}
+  workerPoint: {fileID: 0}
+  Catalog: {fileID: 11400000, guid: f32896f925da4b4fb6022290f2a4db13, type: 2}
+  WaveSource: {fileID: 0}
+  RequestSource: {fileID: 0}
 --- !u!1 &7082955282189684878
 GameObject:
   m_ObjectHideFlags: 0

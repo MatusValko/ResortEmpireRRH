@@ -1,9 +1,10 @@
+using ResortEmpire.Buildings;
 using UnityEngine;
 using System.Collections; // Потрібно для IEnumerator
 
 public class Worker : MonoBehaviour
 {
-    public ServiceBuilding assignedBuilding;
+    public ServiceBuildingBehaviour assignedBuilding;
     public float moveSpeed = 5f; // Швидкість переміщення
     
     private Coroutine moveCoroutine;

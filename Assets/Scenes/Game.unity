@@ -1315,6 +1315,18 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 6
       objectReference: {fileID: 0}
+    - target: {fileID: 4505698325218255092, guid: b8b16844b853b244789efab8a1915e4b, type: 3}
+      propertyPath: WaveSource
+      value: 
+      objectReference: {fileID: 2038617485}
+    - target: {fileID: 4505698325218255092, guid: b8b16844b853b244789efab8a1915e4b, type: 3}
+      propertyPath: workerPoint
+      value: 
+      objectReference: {fileID: 122301762}
+    - target: {fileID: 4505698325218255092, guid: b8b16844b853b244789efab8a1915e4b, type: 3}
+      propertyPath: RequestSource
+      value: 
+      objectReference: {fileID: 581217408}
     - target: {fileID: 4890220056673366160, guid: b8b16844b853b244789efab8a1915e4b, type: 3}
       propertyPath: m_Name
       value: BeachBar
@@ -1339,6 +1351,10 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 6
       objectReference: {fileID: 0}
+    - target: {fileID: 7314188293885768996, guid: b8b16844b853b244789efab8a1915e4b, type: 3}
+      propertyPath: Receiver
+      value: 
+      objectReference: {fileID: 1382926581}
     - target: {fileID: 8100759913789843369, guid: b8b16844b853b244789efab8a1915e4b, type: 3}
       propertyPath: m_Materials.Array.size
       value: 2
@@ -1396,9 +1412,6 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 4890220056673366160, guid: b8b16844b853b244789efab8a1915e4b, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1382926581}
-    - targetCorrespondingSourceObject: {fileID: 4890220056673366160, guid: b8b16844b853b244789efab8a1915e4b, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 1382926582}
   m_SourcePrefab: {fileID: 100100000, guid: b8b16844b853b244789efab8a1915e4b, type: 3}
 --- !u!4 &1382926578 stripped
@@ -1422,11 +1435,10 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 4890220056673366160, guid: b8b16844b853b244789efab8a1915e4b, type: 3}
   m_PrefabInstance: {fileID: 1382926577}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1382926581
+--- !u!114 &1382926581 stripped
 MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
+  m_CorrespondingSourceObject: {fileID: 4505698325218255092, guid: b8b16844b853b244789efab8a1915e4b, type: 3}
+  m_PrefabInstance: {fileID: 1382926577}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1382926580}
   m_Enabled: 1
@@ -1434,10 +1446,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc1627f0bad31ab458eb849f540e3c50, type: 3}
   m_Name: 
   m_EditorClassIdentifier: ResortEmpire.Runtime::ServiceBuilding
-  HasWorker: 0
-  HighlightIntensity: 1.08
-  assignedWorker: {fileID: 0}
-  workerPoint: {fileID: 122301762}
 --- !u!65 &1382926582
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1720,6 +1728,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 248374079}
     m_Modifications:
+    - target: {fileID: 885221545905090363, guid: d724f70da3cf2a9439c359486a86946e, type: 3}
+      propertyPath: Receiver
+      value: 
+      objectReference: {fileID: 1692446277}
     - target: {fileID: 3786230376842052280, guid: d724f70da3cf2a9439c359486a86946e, type: 3}
       propertyPath: m_Layer
       value: 6
@@ -1804,6 +1816,18 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[1]'
       value: 
       objectReference: {fileID: 2100000, guid: d70f5cd6040c688468f571e9a976e630, type: 2}
+    - target: {fileID: 9105833369627538768, guid: d724f70da3cf2a9439c359486a86946e, type: 3}
+      propertyPath: WaveSource
+      value: 
+      objectReference: {fileID: 2038617485}
+    - target: {fileID: 9105833369627538768, guid: d724f70da3cf2a9439c359486a86946e, type: 3}
+      propertyPath: workerPoint
+      value: 
+      objectReference: {fileID: 1399689350}
+    - target: {fileID: 9105833369627538768, guid: d724f70da3cf2a9439c359486a86946e, type: 3}
+      propertyPath: RequestSource
+      value: 
+      objectReference: {fileID: 581217408}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -1811,9 +1835,6 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 1399689350}
     m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 7327163976207577246, guid: d724f70da3cf2a9439c359486a86946e, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1692446277}
     - targetCorrespondingSourceObject: {fileID: 7327163976207577246, guid: d724f70da3cf2a9439c359486a86946e, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1692446278}
@@ -1839,11 +1860,10 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 7327163976207577246, guid: d724f70da3cf2a9439c359486a86946e, type: 3}
   m_PrefabInstance: {fileID: 1692446273}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1692446277
+--- !u!114 &1692446277 stripped
 MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
+  m_CorrespondingSourceObject: {fileID: 9105833369627538768, guid: d724f70da3cf2a9439c359486a86946e, type: 3}
+  m_PrefabInstance: {fileID: 1692446273}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1692446276}
   m_Enabled: 1
@@ -1851,10 +1871,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc1627f0bad31ab458eb849f540e3c50, type: 3}
   m_Name: 
   m_EditorClassIdentifier: ResortEmpire.Runtime::ServiceBuilding
-  HasWorker: 0
-  HighlightIntensity: 1.08
-  assignedWorker: {fileID: 0}
-  workerPoint: {fileID: 1399689350}
 --- !u!65 &1692446278
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1955,6 +1971,10 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[1]'
       value: 
       objectReference: {fileID: 2100000, guid: d70f5cd6040c688468f571e9a976e630, type: 2}
+    - target: {fileID: 2347256130228801129, guid: 2987bb100dcb2ac499bdc342e04e80f9, type: 3}
+      propertyPath: Receiver
+      value: 
+      objectReference: {fileID: 1936262265}
     - target: {fileID: 4307706942337863726, guid: 2987bb100dcb2ac499bdc342e04e80f9, type: 3}
       propertyPath: m_Layer
       value: 6
@@ -2007,6 +2027,18 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 6
       objectReference: {fileID: 0}
+    - target: {fileID: 6462550206399233615, guid: 2987bb100dcb2ac499bdc342e04e80f9, type: 3}
+      propertyPath: WaveSource
+      value: 
+      objectReference: {fileID: 2038617485}
+    - target: {fileID: 6462550206399233615, guid: 2987bb100dcb2ac499bdc342e04e80f9, type: 3}
+      propertyPath: workerPoint
+      value: 
+      objectReference: {fileID: 1718904971}
+    - target: {fileID: 6462550206399233615, guid: 2987bb100dcb2ac499bdc342e04e80f9, type: 3}
+      propertyPath: RequestSource
+      value: 
+      objectReference: {fileID: 581217408}
     - target: {fileID: 6730357686716862384, guid: 2987bb100dcb2ac499bdc342e04e80f9, type: 3}
       propertyPath: m_Name
       value: Restaurant
@@ -2036,9 +2068,6 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 6730357686716862384, guid: 2987bb100dcb2ac499bdc342e04e80f9, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1936262265}
-    - targetCorrespondingSourceObject: {fileID: 6730357686716862384, guid: 2987bb100dcb2ac499bdc342e04e80f9, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 1936262266}
   m_SourcePrefab: {fileID: 100100000, guid: 2987bb100dcb2ac499bdc342e04e80f9, type: 3}
 --- !u!4 &1936262262 stripped
@@ -2062,11 +2091,10 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 6730357686716862384, guid: 2987bb100dcb2ac499bdc342e04e80f9, type: 3}
   m_PrefabInstance: {fileID: 1936262261}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1936262265
+--- !u!114 &1936262265 stripped
 MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
+  m_CorrespondingSourceObject: {fileID: 6462550206399233615, guid: 2987bb100dcb2ac499bdc342e04e80f9, type: 3}
+  m_PrefabInstance: {fileID: 1936262261}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1936262264}
   m_Enabled: 1
@@ -2074,10 +2102,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc1627f0bad31ab458eb849f540e3c50, type: 3}
   m_Name: 
   m_EditorClassIdentifier: ResortEmpire.Runtime::ServiceBuilding
-  HasWorker: 0
-  HighlightIntensity: 1.08
-  assignedWorker: {fileID: 0}
-  workerPoint: {fileID: 1718904971}
 --- !u!65 &1936262266
 BoxCollider:
   m_ObjectHideFlags: 0
