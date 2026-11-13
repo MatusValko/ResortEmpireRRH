@@ -415,6 +415,7 @@ GameObject:
   - component: {fileID: 5122100742260518495}
   - component: {fileID: 2347256130228801129}
   - component: {fileID: 6462550206399233615}
+  - component: {fileID: 6292832904841269450}
   m_Layer: 0
   m_Name: Restaurant
   m_TagString: Untagged
@@ -474,3 +475,20 @@ MonoBehaviour:
   Catalog: {fileID: 11400000, guid: f32896f925da4b4fb6022290f2a4db13, type: 2}
   WaveSource: {fileID: 0}
   RequestSource: {fileID: 0}
+--- !u!114 &6292832904841269450
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6730357686716862384}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07fe7a70018e165499b37056ed4fc718, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.Buildings.BuildingUpgradeEffect
+  Visual: {fileID: 0}
+  BurstPrefab: {fileID: 5483324235079257736, guid: 742a3db1d98aab641b4d7b5f1a0fd522, type: 3}
+  BurstOffset: {x: 0, y: 2, z: 0}
+  Duration: 0.6
+  Strength: 0.18

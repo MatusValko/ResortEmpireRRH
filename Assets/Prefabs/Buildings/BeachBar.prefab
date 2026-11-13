@@ -336,6 +336,7 @@ GameObject:
   - component: {fileID: 8201186169364588515}
   - component: {fileID: 7314188293885768996}
   - component: {fileID: 4505698325218255092}
+  - component: {fileID: 4146596219027660455}
   m_Layer: 0
   m_Name: BeachBar
   m_TagString: Untagged
@@ -474,3 +475,20 @@ MonoBehaviour:
     m_VerticalOverflow: 0
     m_LineSpacing: 1
   m_Text: BEACH BAR
+--- !u!114 &4146596219027660455
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4890220056673366160}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07fe7a70018e165499b37056ed4fc718, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.Buildings.BuildingUpgradeEffect
+  Visual: {fileID: 0}
+  BurstPrefab: {fileID: 5483324235079257736, guid: 742a3db1d98aab641b4d7b5f1a0fd522, type: 3}
+  BurstOffset: {x: 0, y: 2, z: 0}
+  Duration: 0.6
+  Strength: 0.18

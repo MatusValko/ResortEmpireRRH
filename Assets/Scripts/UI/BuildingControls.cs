@@ -92,8 +92,9 @@ namespace ResortEmpire.UI
             if (MoveButtonText.text != text)
                 MoveButtonText.text = text;
 
-            UpgradeButton.gameObject.SetActive(Windows.CanOpenPreviews && Destination.IsAvailable);
-            UpgradeButton.interactable = Windows.CanOpenPreviews && Destination.IsAvailable;
+            bool canUpgrade = Windows.CanOpenPreviews && Destination.IsAvailable && Building.Building != null;
+            UpgradeButton.gameObject.SetActive(canUpgrade);
+            UpgradeButton.interactable = canUpgrade;
         }
 
 
@@ -112,8 +113,8 @@ namespace ResortEmpire.UI
 
         private void OnUpgradeClicked()
         {
-            if (Destination.IsAvailable)
-                Windows.ShowUpgrade(DisplayName);
+            if (Destination.IsAvailable && Building.Building != null)
+                Windows.ShowUpgrade(Building.Building, DisplayName);
         }
     }
 }

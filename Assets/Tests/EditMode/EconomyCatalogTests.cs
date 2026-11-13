@@ -3,6 +3,7 @@ using System;
 using NUnit.Framework;
 using ResortEmpire.Economy;
 using ResortEmpire.Services;
+using ResortEmpire.Waves;
 using UnityEditor;
 using UnityEngine;
 
@@ -40,6 +41,52 @@ namespace ResortEmpire.Tests
         {
             foreach (ServiceType service in Enum.GetValues(typeof(ServiceType)))
                 Assert.That(_catalog.GetReward(service), Is.GreaterThan(0), service.ToString());
+        }
+
+
+        [Test]
+        public void DefaultCatalogPaysTheSameForEveryService()
+        {
+            foreach (ServiceType service in Enum.GetValues(typeof(ServiceType)))
+                Assert.That(_catalog.GetReward(service), Is.EqualTo(16), service.ToString());
+        }
+
+
+        [TestCase(WaveRating.OneStar, ExpectedResult = 40)]
+        [TestCase(WaveRating.FourStars, ExpectedResult = 100)]
+        [TestCase(WaveRating.Perfect, ExpectedResult = 130)]
+        public long RatingMultipliesCoins(WaveRating rating)
+        {
+            return _catalog.ApplyRating(100, rating);
+        }
+
+
+        [Test]
+        public void RatedCoinsAreRounded()
+        {
+            Assert.That(_catalog.ApplyRating(16, WaveRating.OneStar), Is.EqualTo(6));
+        }
+
+
+        [Test]
+        public void MissingRatingIsInvalid()
+        {
+            SerializedObject serialized = new(_catalog);
+            serialized.FindProperty("RatingMultipliers").arraySize = 5;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.That(_catalog.TryValidate(out _), Is.False);
+        }
+
+
+        [Test]
+        public void NegativeRatingMultiplierIsInvalid()
+        {
+            SerializedObject serialized = new(_catalog);
+            serialized.FindProperty("RatingMultipliers").GetArrayElementAtIndex(0).FindPropertyRelative("Multiplier").floatValue = -0.1f;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.That(_catalog.TryValidate(out _), Is.False);
         }
 
 

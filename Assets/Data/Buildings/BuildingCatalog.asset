@@ -21,6 +21,9 @@ MonoBehaviour:
     - 3
     - 5
     - 7
+    UpgradeCosts:
+    - 500
+    - 1200
     StaffedUtilization: 1
     UnstaffedUtilization: 0.33
   - DisplayName: Restaurant
@@ -31,6 +34,9 @@ MonoBehaviour:
     - 3
     - 5
     - 7
+    UpgradeCosts:
+    - 500
+    - 1200
     StaffedUtilization: 1
     UnstaffedUtilization: 0.33
   - DisplayName: Beach Bar
@@ -41,6 +47,9 @@ MonoBehaviour:
     - 3
     - 5
     - 7
+    UpgradeCosts:
+    - 500
+    - 1200
     StaffedUtilization: 1
     UnstaffedUtilization: 0.33
   - DisplayName: Relax Zone
@@ -51,6 +60,9 @@ MonoBehaviour:
     - 3
     - 5
     - 7
+    UpgradeCosts:
+    - 500
+    - 1200
     StaffedUtilization: 1
     UnstaffedUtilization: 0.33
   - DisplayName: Ocean View
@@ -61,5 +73,8 @@ MonoBehaviour:
     - 3
     - 5
     - 7
+    UpgradeCosts:
+    - 500
+    - 1200
     StaffedUtilization: 1
     UnstaffedUtilization: 0.33
