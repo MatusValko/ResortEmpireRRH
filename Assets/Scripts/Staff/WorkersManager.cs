@@ -26,6 +26,7 @@ public class WorkersManagers : MonoBehaviour
     void Start()
     {
         mode = ManagerMode.free;
+        
         chosenWorker = null;
         UI.SetActive(false);
 
@@ -64,6 +65,8 @@ public class WorkersManagers : MonoBehaviour
             worker.transform.position = selectedBuilding.workerPoint.position;
 
             availableBuildings.RemoveAt(randomIndex);
+
+            CancelHighlightBuildings();
         }
     }
 
@@ -135,17 +138,17 @@ public class WorkersManagers : MonoBehaviour
     }
     
     public void AssignWorker(ServiceBuilding building, Worker worker){
-            
-            if(chosenWorker.assignedBuilding != null)
-            {
-                chosenWorker.assignedBuilding.ResetWorkerAssignment();
-            }
+        if(chosenWorker.assignedBuilding != null)
+        {
+            chosenWorker.assignedBuilding.ResetWorkerAssignment();
+        }
 
-            building.HasWorker = true;
-            chosenWorker.assignedBuilding = building;
-            building.assignedWorker = chosenWorker;
-            chosenWorker.transform.position = building.workerPoint.position;
-            CancelWorkerAssignment();
+        building.HasWorker = true;
+        chosenWorker.assignedBuilding = building;
+        building.assignedWorker = chosenWorker;
+        chosenWorker.MoveToPoint(building.workerPoint);
+        
+        CancelWorkerAssignment();
     }
 
     public void ChooseWorker(Worker worker){
