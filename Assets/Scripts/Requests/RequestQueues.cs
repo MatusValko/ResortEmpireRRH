@@ -88,6 +88,22 @@ namespace ResortEmpire.Requests
         }
 
 
+        public int GetCompletedCount(ServiceType service)
+        {
+            if (!_waiting.ContainsKey(service))
+                throw new ArgumentOutOfRangeException(nameof(service));
+
+            int count = 0;
+            foreach (RequestServiceRecord record in _serviced.Values)
+            {
+                if (record.IsCompleted && record.Queued.Request.Service == service)
+                    count++;
+            }
+
+            return count;
+        }
+
+
         public bool TryPeekWaiting(ServiceType service, out QueuedRequest request)
         {
             return GetQueue(service).TryPeek(out request);

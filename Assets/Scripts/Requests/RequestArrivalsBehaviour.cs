@@ -84,6 +84,9 @@ namespace ResortEmpire.Requests
             }
 
             Arrivals.Tick();
+
+            if (_wave.State == WaveState.WaveActive)
+                _wave.TryReportProgress(new WaveProgress(_wave.CurrentWaveNumber, Arrivals.ArrivalsComplete, Queues.TotalUnfinished));
         }
 
 
