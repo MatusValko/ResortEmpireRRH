@@ -81,6 +81,16 @@ namespace ResortEmpire.Requests
         }
 
 
+        public int GetPlannedCount(ServiceType service)
+        {
+            int index = Array.IndexOf(Services, service);
+            if (index < 0)
+                throw new ArgumentOutOfRangeException(nameof(service));
+
+            return _planned[index];
+        }
+
+
         public int GetGeneratedCount(ServiceType service)
         {
             int index = Array.IndexOf(Services, service);
