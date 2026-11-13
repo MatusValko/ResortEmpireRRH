@@ -756,6 +756,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ServiceBuilding
   HasWorker: 0
+  HighlightIntensity: 1.2
   assignedWorker: {fileID: 0}
   workerPoint: {fileID: 1022403503}
 --- !u!65 &934981327
@@ -805,6 +806,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: eb5e06260ec87b447ab311e78ebca200, type: 2}
+  - {fileID: 2100000, guid: d70f5cd6040c688468f571e9a976e630, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1043,6 +1045,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ServiceBuilding
   HasWorker: 0
+  HighlightIntensity: 1.2
   assignedWorker: {fileID: 0}
   workerPoint: {fileID: 1443509898}
 --- !u!65 &1215464652
@@ -1092,6 +1095,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 224a4a0017969c141929cc4ff008b4fa, type: 2}
+  - {fileID: 2100000, guid: d70f5cd6040c688468f571e9a976e630, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1340,6 +1344,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ServiceBuilding
   HasWorker: 0
+  HighlightIntensity: 1.2
   assignedWorker: {fileID: 0}
   workerPoint: {fileID: 2073883994}
 --- !u!65 &1644537664
@@ -1389,6 +1394,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 2697090988039d448ac834ef618d5996, type: 2}
+  - {fileID: 2100000, guid: d70f5cd6040c688468f571e9a976e630, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -2017,6 +2023,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   UI: {fileID: 1966075228}
+  shaderPropertyName: _OutlineSize
 --- !u!4 &2124727820
 Transform:
   m_ObjectHideFlags: 0

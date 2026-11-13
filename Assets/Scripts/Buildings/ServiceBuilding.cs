@@ -6,6 +6,8 @@ public class ServiceBuilding : MonoBehaviour
     
     public bool HasWorker;
 
+    public float HighlightIntensity = 1.2f;
+
     public Worker assignedWorker;
 
     public Transform workerPoint;

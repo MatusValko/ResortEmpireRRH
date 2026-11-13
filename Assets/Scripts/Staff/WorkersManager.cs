@@ -9,11 +9,19 @@ public class WorkersManagers : MonoBehaviour
     public Worker chosenWorker;
     public ManagerMode mode;
 
+    private bool isActive = true;
+
     [SerializeField] private Camera mainCamera;
     [SerializeField] private LayerMask interactableLayer;
 
     [Header("UI ELEMENTS")]
     public GameObject UI;
+
+    [Header("Buildings Highlighting")]
+     public string shaderPropertyName = "OutlineSize";
+
+     private GameObject[] buildings;
+     private GameObject[] workers;
     
     void Start()
     {
@@ -21,8 +29,8 @@ public class WorkersManagers : MonoBehaviour
         chosenWorker = null;
         UI.SetActive(false);
 
-        GameObject[] workers = GameObject.FindGameObjectsWithTag("Worker");
-        GameObject[] buildings = GameObject.FindGameObjectsWithTag("Building");
+        workers = GameObject.FindGameObjectsWithTag("Worker");
+        buildings = GameObject.FindGameObjectsWithTag("Building");
 
         System.Collections.Generic.List<ServiceBuilding> availableBuildings = new();
 
@@ -72,6 +80,8 @@ public class WorkersManagers : MonoBehaviour
     //optional: click on the UI to cancel the assignment.
     private void Update()
     {
+        if(!isActive) return;
+        
         if (Touchscreen.current != null)
         {
             var touch = Touchscreen.current.primaryTouch;
@@ -142,6 +152,7 @@ public class WorkersManagers : MonoBehaviour
 
         chosenWorker = worker;
         mode = ManagerMode.worker;
+        HighlightAvailableBuildings(true);
         UI.SetActive(true);
 
     }
@@ -149,9 +160,67 @@ public class WorkersManagers : MonoBehaviour
     public void CancelWorkerAssignment(){
         chosenWorker = null;
         mode = ManagerMode.free;
+        CancelHighlightBuildings();
         UI.SetActive(false);
     }
 
+    
+   public void HighlightAvailableBuildings(bool highlight)
+    {
+        foreach (GameObject buildingObject in buildings)
+        {
+            ServiceBuilding building = buildingObject.GetComponent<ServiceBuilding>();
+
+            if (building == null || building.HasWorker)
+                continue;
+
+            Renderer[] renderers = buildingObject.GetComponentsInChildren<Renderer>();
+
+            foreach (Renderer renderer in renderers)
+            {
+                foreach (Material material in renderer.materials)
+                {
+                    bool hasProperty = material.HasProperty(shaderPropertyName);
+
+                    Debug.Log($"{material.name} | {shaderPropertyName} | HasProperty: {hasProperty}");
+
+                    if (hasProperty)
+                    {
+                        float intensity = highlight ? building.HighlightIntensity : 0f;
+                        material.SetFloat(shaderPropertyName, intensity);
+
+                        Debug.Log($"Set {shaderPropertyName} to {intensity}");
+                    }
+                }
+            }
+        }
+    }
+
+    public void CancelHighlightBuildings()
+    {
+        foreach (GameObject buildingObject in buildings)
+        {
+            ServiceBuilding building = buildingObject.GetComponent<ServiceBuilding>();
+
+            if (building == null)
+                continue;
+
+            Renderer[] renderers = buildingObject.GetComponentsInChildren<Renderer>();
+
+            foreach (Renderer renderer in renderers)
+            {
+                foreach (Material material in renderer.materials)
+                {
+                    bool hasProperty = material.HasProperty(shaderPropertyName);
+
+                    if (hasProperty)
+                    {
+                        material.SetFloat(shaderPropertyName, 0f);
+                    }
+                }
+            }
+        }
+    }
 
 
 
