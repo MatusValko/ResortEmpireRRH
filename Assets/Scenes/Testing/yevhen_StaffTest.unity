@@ -152,6 +152,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Worker
   assignedBuilding: {fileID: 0}
+  moveSpeed: 8
 --- !u!136 &74355383
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -1475,6 +1476,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Worker
   assignedBuilding: {fileID: 0}
+  moveSpeed: 8
 --- !u!136 &1772832186
 CapsuleCollider:
   m_ObjectHideFlags: 0

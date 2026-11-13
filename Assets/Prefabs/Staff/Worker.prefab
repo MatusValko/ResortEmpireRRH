@@ -128,3 +128,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Worker
   assignedBuilding: {fileID: 0}
+  moveSpeed: 8
