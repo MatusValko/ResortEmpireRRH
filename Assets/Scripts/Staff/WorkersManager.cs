@@ -1,3 +1,4 @@
+using ResortEmpire.Buildings;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -33,11 +34,11 @@ public class WorkersManagers : MonoBehaviour
         workers = GameObject.FindGameObjectsWithTag("Worker");
         buildings = GameObject.FindGameObjectsWithTag("Building");
 
-        System.Collections.Generic.List<ServiceBuilding> availableBuildings = new();
+        System.Collections.Generic.List<ServiceBuildingBehaviour> availableBuildings = new();
 
         foreach (GameObject buildingObject in buildings)
         {
-            ServiceBuilding building = buildingObject.GetComponent<ServiceBuilding>();
+            ServiceBuildingBehaviour building = buildingObject.GetComponent<ServiceBuildingBehaviour>();
 
             if (building != null && !building.HasWorker)
             {
@@ -56,7 +57,7 @@ public class WorkersManagers : MonoBehaviour
                 break;
 
             int randomIndex = Random.Range(0, availableBuildings.Count);
-            ServiceBuilding selectedBuilding = availableBuildings[randomIndex];
+            ServiceBuildingBehaviour selectedBuilding = availableBuildings[randomIndex];
 
             selectedBuilding.HasWorker = true;
             selectedBuilding.assignedWorker = worker;
@@ -118,7 +119,7 @@ public class WorkersManagers : MonoBehaviour
             }
 
             if(obj.CompareTag("Building") && mode == ManagerMode.worker && chosenWorker){
-                TryAssignWorker(obj.GetComponent<ServiceBuilding>(), chosenWorker);
+                TryAssignWorker(obj.GetComponent<ServiceBuildingBehaviour>(), chosenWorker);
             }
         }
     }
@@ -126,7 +127,7 @@ public class WorkersManagers : MonoBehaviour
     
 
     
-    public void TryAssignWorker(ServiceBuilding _building, Worker _worker){
+    public void TryAssignWorker(ServiceBuildingBehaviour _building, Worker _worker){
         if(_building.HasWorker == false && _worker != null){
             AssignWorker(_building, _worker);
         }
@@ -137,7 +138,7 @@ public class WorkersManagers : MonoBehaviour
         }
     }
     
-    public void AssignWorker(ServiceBuilding building, Worker worker){
+    public void AssignWorker(ServiceBuildingBehaviour building, Worker worker){
         if(chosenWorker.assignedBuilding != null)
         {
             chosenWorker.assignedBuilding.ResetWorkerAssignment();
@@ -172,7 +173,7 @@ public class WorkersManagers : MonoBehaviour
     {
         foreach (GameObject buildingObject in buildings)
         {
-            ServiceBuilding building = buildingObject.GetComponent<ServiceBuilding>();
+            ServiceBuildingBehaviour building = buildingObject.GetComponent<ServiceBuildingBehaviour>();
 
             if (building == null || building.HasWorker)
                 continue;
@@ -203,7 +204,7 @@ public class WorkersManagers : MonoBehaviour
     {
         foreach (GameObject buildingObject in buildings)
         {
-            ServiceBuilding building = buildingObject.GetComponent<ServiceBuilding>();
+            ServiceBuildingBehaviour building = buildingObject.GetComponent<ServiceBuildingBehaviour>();
 
             if (building == null)
                 continue;

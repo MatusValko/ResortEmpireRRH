@@ -414,6 +414,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5122100742260518495}
   - component: {fileID: 2347256130228801129}
+  - component: {fileID: 6462550206399233615}
   m_Layer: 0
   m_Name: Restaurant
   m_TagString: Untagged
@@ -452,3 +453,24 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.Services.ServiceDestination
   ProvidedService: 1
+  Receiver: {fileID: 0}
+  Unlocked: 1
+--- !u!114 &6462550206399233615
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6730357686716862384}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc1627f0bad31ab458eb849f540e3c50, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ResortEmpire.Runtime::ServiceBuilding
+  HasWorker: 0
+  HighlightIntensity: 1.08
+  assignedWorker: {fileID: 0}
+  workerPoint: {fileID: 0}
+  Catalog: {fileID: 11400000, guid: f32896f925da4b4fb6022290f2a4db13, type: 2}
+  WaveSource: {fileID: 0}
+  RequestSource: {fileID: 0}

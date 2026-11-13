@@ -1,5 +1,6 @@
 using System;
 
+using ResortEmpire.Requests;
 using ResortEmpire.Services;
 using ResortEmpire.Waves;
 using UnityEngine;
@@ -7,30 +8,54 @@ using UnityEngine;
 namespace ResortEmpire.Buildings
 {
     [DisallowMultipleComponent]
-    public sealed class ServiceBuildingBehaviour : MonoBehaviour
+    public sealed class ServiceBuildingBehaviour : MonoBehaviour, IRequestReceiver
     {
-        [SerializeField] private BuildingCatalog Catalog;
+        [Header("Staff")]
+        public bool HasWorker;
 
-        [SerializeField] private ServiceType Service = ServiceType.Rooms;
+        public float HighlightIntensity = 1.2f;
+
+        public Worker assignedWorker;
+
+        public Transform workerPoint;
+
+        [Header("Simulation")]
+        [SerializeField] private BuildingCatalog Catalog;
 
         [Tooltip("When set, the building follows the wave pause automatically.")]
         [SerializeField] private WaveControllerBehaviour WaveSource;
 
+        [Tooltip("Owner of the request queues. Completed services are reported to it.")]
+        [SerializeField] private RequestArrivalsBehaviour RequestSource;
+
+
+        private ServiceDestination _destination;
 
         private IWaveContext _waveContext;
 
         private bool _resolved;
 
+        private bool _capacityFreed;
 
+
+        // Null when the simulation is not configured on this object
         public ServiceBuilding Building { get; private set; }
+
+
+        public void ResetWorkerAssignment()
+        {
+            HasWorker = false;
+            assignedWorker = null;
+        }
 
 
         private void Awake()
         {
-            if (Catalog == null)
+            _destination = GetComponent<ServiceDestination>();
+
+            if (_destination == null || Catalog == null)
             {
-                Debug.LogError($"{nameof(ServiceBuildingBehaviour)} on '{name}': BuildingCatalog is not assigned.", this);
-                enabled = false;
+                Debug.LogWarning($"{nameof(ServiceBuildingBehaviour)} on '{name}': no ServiceDestination or BuildingCatalog, the building simulation is off.", this);
 
                 return;
             }
@@ -38,20 +63,24 @@ namespace ResortEmpire.Buildings
             if (!Catalog.TryValidate(out string error))
             {
                 Debug.LogError($"{nameof(ServiceBuildingBehaviour)} on '{name}': Invalid BuildingCatalog: {error}", this);
-                enabled = false;
 
                 return;
             }
 
             try
             {
-                Building = new ServiceBuilding(Catalog.GetBuilding(Service));
+                Building = new ServiceBuilding(Catalog.GetBuilding(_destination.Service));
             }
             catch (Exception exception)
             {
                 Debug.LogError($"{nameof(ServiceBuildingBehaviour)} on '{name}': {exception.Message}", this);
-                enabled = false;
+
+                return;
             }
+
+            Building.StateChanged += OnBuildingStateChanged;
+            Building.ServiceCompleted += OnServiceCompleted;
+            SyncDestination();
         }
 
 
@@ -59,6 +88,12 @@ namespace ResortEmpire.Buildings
         // Awake order between objects is not guaranteed
         private void Start()
         {
+            if (Building == null)
+                return;
+
+            if (RequestSource == null)
+                Debug.LogWarning($"{nameof(ServiceBuildingBehaviour)} on '{name}': RequestSource is not assigned, completed requests will not be reported.", this);
+
             ResolveWaveContext();
         }
 
@@ -79,9 +114,64 @@ namespace ResortEmpire.Buildings
         }
 
 
+        private void OnDestroy()
+        {
+            if (Building == null)
+                return;
+
+            Building.StateChanged -= OnBuildingStateChanged;
+            Building.ServiceCompleted -= OnServiceCompleted;
+        }
+
+
         private void Update()
         {
-            Building?.AdvanceTime(Time.deltaTime);
+            if (Building == null)
+                return;
+
+            // WorkersManager writes HasWorker directly; the simulation follows it
+            Building.SetWorkerAssigned(HasWorker);
+
+            _capacityFreed = false;
+            Building.AdvanceTime(Time.deltaTime);
+
+            // Once per frame, after all completions: lets Requests seat the next waiting guests
+            if (_capacityFreed)
+                _destination.NotifyCapacityAvailable();
+        }
+
+
+        // IRequestReceiver: called by ServiceDestination when Requests dispatches a queue.
+        // Returning true means a seat is already taken for this request.
+        public bool TryAccept(QueuedRequest request)
+        {
+            if (Building == null || !isActiveAndEnabled || request.Request.Service != Building.ServedService)
+                return false;
+
+            return Building.TryStartService(request);
+        }
+
+
+        private void OnServiceCompleted(ServiceBuilding building, QueuedRequest request)
+        {
+            _capacityFreed = true;
+
+            RequestQueues queues = RequestSource != null ? RequestSource.Queues : null;
+            if (queues == null || !queues.TryCompleteRequest(request.Request))
+                Debug.LogWarning($"{nameof(ServiceBuildingBehaviour)} on '{name}': request {request.Request.Id} could not be reported as completed.", this);
+        }
+
+
+        private void OnBuildingStateChanged(ServiceBuilding building)
+        {
+            SyncDestination();
+        }
+
+
+        // Requests only send guests to unlocked destinations
+        private void SyncDestination()
+        {
+            _destination.SetUnlocked(Building.IsUnlocked);
         }
 
 
