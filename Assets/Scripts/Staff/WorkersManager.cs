@@ -1,4 +1,7 @@
+using System.Collections.Generic;
+
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 public class WorkersManagers : MonoBehaviour
@@ -22,6 +25,8 @@ public class WorkersManagers : MonoBehaviour
 
      private GameObject[] buildings;
      private GameObject[] workers;
+
+    private readonly List<RaycastResult> _uiRaycastResults = new();
     
     void Start()
     {
@@ -105,6 +110,19 @@ public class WorkersManagers : MonoBehaviour
 
     private void CastRay(Vector2 screenPosition)
     {
+        if (EventSystem.current != null)
+        {
+            var pointer = new PointerEventData(EventSystem.current) { position = screenPosition };
+            _uiRaycastResults.Clear();
+            EventSystem.current.RaycastAll(pointer, _uiRaycastResults);
+
+            foreach (RaycastResult result in _uiRaycastResults)
+            {
+                if (result.module is UnityEngine.UI.GraphicRaycaster)
+                    return;
+            }
+        }
+
         Ray ray = mainCamera.ScreenPointToRay(screenPosition);
 
         if (Physics.Raycast(ray, out RaycastHit hit, 100f, interactableLayer))
