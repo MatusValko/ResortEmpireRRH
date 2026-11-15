@@ -18,7 +18,9 @@ namespace ResortEmpire.Waves
         [SerializeField, Range(0f, 100f)] private float WaveFloorPercent = 40f;
 
         [Tooltip("Other services have a weight of 1.")]
-        [SerializeField] private float OceanViewWeight = 1.5f;
+        [SerializeField, Range(1f, 3f)] private float OceanViewWeight = 1.5f;
+
+        [SerializeField, Range(0f, 100f)] private float OneStarPercent = 40f;
 
         [SerializeField, Range(0f, 100f)] private float TwoStarsPercent = 55f;
 
@@ -44,7 +46,7 @@ namespace ResortEmpire.Waves
         {
             return rating switch
             {
-                WaveRating.OneStar => WaveFloorPercent,
+                WaveRating.OneStar => OneStarPercent,
                 WaveRating.TwoStars => TwoStarsPercent,
                 WaveRating.ThreeStars => ThreeStarsPercent,
                 WaveRating.FourStars => FourStarsPercent,
@@ -65,15 +67,15 @@ namespace ResortEmpire.Waves
                 return false;
             }
 
-            if (!IsFinite(OceanViewWeight) || OceanViewWeight <= 0f)
+            if (!IsFinite(OceanViewWeight) || OceanViewWeight < 1f || OceanViewWeight > 3f)
             {
-                error = "Ocean View satisfaction weight must be finite and positive.";
+                error = "Ocean View satisfaction weight must be finite and between 1 and 3.";
 
                 return false;
             }
 
             if (!IsPercent(UnitFloorPercent) || !IsPercent(WaveFloorPercent)
-                || !IsPercent(TwoStarsPercent) || !IsPercent(ThreeStarsPercent)
+                || !IsPercent(OneStarPercent) || !IsPercent(TwoStarsPercent) || !IsPercent(ThreeStarsPercent)
                 || !IsPercent(FourStarsPercent) || !IsPercent(FiveStarsPercent))
             {
                 error = "Satisfaction floors and rating thresholds must be finite percentages from 0 to 100.";
@@ -81,11 +83,17 @@ namespace ResortEmpire.Waves
                 return false;
             }
 
-            if (!(UnitFloorPercent < WaveFloorPercent && WaveFloorPercent < TwoStarsPercent
-                && TwoStarsPercent < ThreeStarsPercent && ThreeStarsPercent < FourStarsPercent
+            if (!(UnitFloorPercent < WaveFloorPercent && WaveFloorPercent < ThreeStarsPercent))
+            {
+                error = "Require unit floor < wave floor < 3 stars.";
+
+                return false;
+            }
+
+            if (!(OneStarPercent < TwoStarsPercent && TwoStarsPercent < ThreeStarsPercent && ThreeStarsPercent < FourStarsPercent
                 && FourStarsPercent < FiveStarsPercent && FiveStarsPercent < 100f))
             {
-                error = "Require unit floor < wave floor (1 star) < 2 stars < 3 stars < 4 stars < 5 stars < Perfect (100%).";
+                error = "Require 1 star < 2 stars < 3 stars < 4 stars < 5 stars < Perfect (100%).";
 
                 return false;
             }

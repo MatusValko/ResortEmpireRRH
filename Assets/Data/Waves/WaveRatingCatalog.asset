@@ -17,6 +17,7 @@ MonoBehaviour:
   UnitFloorPercent: 25
   WaveFloorPercent: 40
   OceanViewWeight: 1.5
+  OneStarPercent: 40
   TwoStarsPercent: 55
   ThreeStarsPercent: 70
   FourStarsPercent: 80

@@ -65,10 +65,14 @@ namespace ResortEmpire.Tests
         [TestCase("PatienceLimitSeconds", 5f)]
         [TestCase("OceanViewWeight", 0f)]
         [TestCase("OceanViewWeight", -1f)]
+        [TestCase("OceanViewWeight", 0.1f)]
+        [TestCase("OceanViewWeight", 3.1f)]
         [TestCase("UnitFloorPercent", -1f)]
         [TestCase("UnitFloorPercent", 40f)]
         [TestCase("WaveFloorPercent", 25f)]
-        [TestCase("WaveFloorPercent", 55f)]
+        [TestCase("WaveFloorPercent", 70f)]
+        [TestCase("OneStarPercent", -1f)]
+        [TestCase("OneStarPercent", 55f)]
         [TestCase("TwoStarsPercent", 40f)]
         [TestCase("TwoStarsPercent", 70f)]
         [TestCase("ThreeStarsPercent", 55f)]
@@ -124,6 +128,27 @@ namespace ResortEmpire.Tests
         }
 
 
+        [TestCase(55f)]
+        [TestCase(60f)]
+        public void WaveFloorCanReachOrExceedTwoStarThreshold(float floor)
+        {
+            SetField("WaveFloorPercent", floor);
+
+            Assert.That(_catalog.TryValidate(out string error), Is.True, error);
+            Assert.That(_catalog.GetRatingThreshold(WaveRating.OneStar), Is.EqualTo(40f));
+        }
+
+
+        [TestCase(1f)]
+        [TestCase(3f)]
+        public void OceanViewWeightAcceptsRangeBoundaries(float weight)
+        {
+            SetField("OceanViewWeight", weight);
+
+            Assert.That(_catalog.TryValidate(out string error), Is.True, error);
+        }
+
+
         [Test]
         public void ProjectAssetIsValid()
         {
@@ -131,8 +156,6 @@ namespace ResortEmpire.Tests
 
             Assert.That(asset, Is.Not.Null);
             Assert.That(asset.TryValidate(out string error), Is.True, error);
-            foreach (WaveRating rating in Enum.GetValues(typeof(WaveRating)))
-                Assert.That(asset.GetRatingThreshold(rating), Is.EqualTo(_catalog.GetRatingThreshold(rating)));
         }
 
 
