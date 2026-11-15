@@ -11,6 +11,12 @@ namespace ResortEmpire.Economy
     {
         [SerializeField] private long StartingCoins;
 
+        [Tooltip("Energy for 1, 2, 3, 4, 5 stars and Perfect, in that order.")]
+        [SerializeField] private int[] EnergyByRating = { 0, 1, 2, 3, 5, 5 };
+
+        [Tooltip("Prototype tuning: 1-5 stars grant 1-5 times this amount; Perfect grants 6 times.")]
+        [SerializeField, Min(0)] private int ResortValuePerRating = 10;
+
         [Tooltip("Coins for one completed request, before the wave rating is applied. Exactly one entry per service type.")]
         [SerializeField] private ServiceReward[] Rewards =
         {
@@ -34,6 +40,23 @@ namespace ResortEmpire.Economy
 
 
         public long StartingBalance => StartingCoins;
+
+        public int GetEnergyReward(WaveRating rating)
+        {
+            if (!Enum.IsDefined(typeof(WaveRating), rating))
+                throw new ArgumentOutOfRangeException(nameof(rating));
+
+            return EnergyByRating[(int)rating];
+        }
+
+
+        public long GetResortValueReward(WaveRating rating)
+        {
+            if (!Enum.IsDefined(typeof(WaveRating), rating))
+                throw new ArgumentOutOfRangeException(nameof(rating));
+
+            return ((long)rating + 1) * ResortValuePerRating;
+        }
 
 
         public int GetReward(ServiceType service)
@@ -73,6 +96,30 @@ namespace ResortEmpire.Economy
 
         public bool TryValidate(out string error)
         {
+            if (EnergyByRating == null || EnergyByRating.Length != Enum.GetValues(typeof(WaveRating)).Length)
+            {
+                error = "Energy rewards must contain exactly one value per wave rating.";
+
+                return false;
+            }
+
+            for (int i = 0; i < EnergyByRating.Length; i++)
+            {
+                if (EnergyByRating[i] < 0)
+                {
+                    error = $"Energy reward for {(WaveRating)i} must not be negative.";
+
+                    return false;
+                }
+            }
+
+            if (ResortValuePerRating < 0)
+            {
+                error = "Resort Value reward must not be negative.";
+
+                return false;
+            }
+
             if (StartingCoins < 0)
             {
                 error = "Starting coins must not be negative.";

@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: EconomyCatalog
   m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.Economy.EconomyCatalog
   StartingCoins: 0
+  EnergyByRating: 000000000100000002000000030000000500000005000000i
+  ResortValuePerRating: 10
   Rewards:
   - Service: 0
     Coins: 16
