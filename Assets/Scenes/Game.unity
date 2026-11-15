@@ -2678,6 +2678,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.UI.ServiceStatusView
   Waves: {fileID: 2038617485}
   Requests: {fileID: 581217408}
+  RatingCatalog: {fileID: 11400000, guid: c7e3da5954265f54eb2b2725a935c973, type: 2}
   Destination: {fileID: 1382926579}
   Building: {fileID: 1382926581}
   ResortCamera: {fileID: 330585545}
@@ -3544,6 +3545,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.UI.ServiceStatusView
   Waves: {fileID: 2038617485}
   Requests: {fileID: 581217408}
+  RatingCatalog: {fileID: 11400000, guid: c7e3da5954265f54eb2b2725a935c973, type: 2}
   Destination: {fileID: 1936262263}
   Building: {fileID: 1936262265}
   ResortCamera: {fileID: 330585545}
@@ -5303,6 +5305,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.UI.ServiceStatusView
   Waves: {fileID: 2038617485}
   Requests: {fileID: 581217408}
+  RatingCatalog: {fileID: 11400000, guid: c7e3da5954265f54eb2b2725a935c973, type: 2}
   Destination: {fileID: 1692446275}
   Building: {fileID: 1692446277}
   ResortCamera: {fileID: 330585545}
@@ -6705,7 +6708,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: -142.12335, y: 360.42053}
-  m_SizeDelta: {x: 288, y: 72}
+  m_SizeDelta: {x: 288, y: 104}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &1403525344
 MonoBehaviour:
@@ -7820,7 +7823,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 266.83252, y: 169.09204}
-  m_SizeDelta: {x: 288, y: 72}
+  m_SizeDelta: {x: 288, y: 104}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &1572602628
 MonoBehaviour:
@@ -10334,7 +10337,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: -551.07935, y: 169.09204}
-  m_SizeDelta: {x: 288, y: 72}
+  m_SizeDelta: {x: 288, y: 104}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &2113223431
 MonoBehaviour:

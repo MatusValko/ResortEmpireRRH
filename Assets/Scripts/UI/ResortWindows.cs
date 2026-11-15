@@ -264,8 +264,11 @@ namespace ResortEmpire.UI
                 case WindowMode.WaveResult:
                     if (Results.TryConfirmResult())
                         CloseWindow();
-                    else
+                    else if (Results.Result.HasValue)
+                    {
+                        OnResultReady(Results.Result.Value);
                         WindowText.text += "\n\nOdmeny sa nepodarilo prevziať. Skúste znova.";
+                    }
 
                     break;
 

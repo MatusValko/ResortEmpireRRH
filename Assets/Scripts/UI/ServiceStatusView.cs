@@ -13,6 +13,8 @@ namespace ResortEmpire.UI
 
         [SerializeField] private RequestArrivalsBehaviour Requests;
 
+        [SerializeField] private WaveRatingCatalog RatingCatalog;
+
         [SerializeField] private ServiceDestination Destination;
 
         [SerializeField] private ServiceBuildingBehaviour Building;
@@ -46,15 +48,18 @@ namespace ResortEmpire.UI
 
         private bool _hasWorker;
 
+        private string _warning;
+
 
         private void Start()
         {
             if (Waves == null || Waves.Controller == null || Requests == null
                 || Requests.Arrivals == null || Requests.Queues == null || Destination == null
+                || RatingCatalog == null || !RatingCatalog.TryValidate(out _)
                 || Building == null || ResortCamera == null || CountsText == null
                 || BuildingLabel == null || BuildingText == null)
             {
-                DisableWithError("Assign initialized Waves and Requests, building references, camera and UI labels.");
+                DisableWithError("Assign initialized Waves and Requests, a valid rating catalog, building references, camera and UI labels.");
 
                 return;
             }
@@ -87,6 +92,7 @@ namespace ResortEmpire.UI
             bool hasWorker = Building.HasWorker;
             int freeSeats = Building.Building != null ? Building.Building.FreeSeats : -1;
             int totalSeats = Building.Building != null ? Building.Building.TotalSeats : -1;
+            string warning = GetWarning(currentQueue, hasWorker, service);
 
             if (planned != _planned || completed != _completed)
             {
@@ -95,14 +101,17 @@ namespace ResortEmpire.UI
                 _completed = completed;
             }
 
-            if (waiting != _waiting || hasWorker != _hasWorker || freeSeats != _freeSeats || totalSeats != _totalSeats)
+            if (waiting != _waiting || hasWorker != _hasWorker || freeSeats != _freeSeats || totalSeats != _totalSeats || warning != _warning)
             {
                 string seats = totalSeats >= 0 ? $"{freeSeats}/{totalSeats} voľné" : "—";
                 BuildingText.text = $"Miesta: {seats}\nRad: {waiting}  ·  Pracovník: {(hasWorker ? "áno" : "nie")}";
+                if (warning.Length > 0)
+                    BuildingText.text += $"\n{warning}";
                 _waiting = waiting;
                 _hasWorker = hasWorker;
                 _freeSeats = freeSeats;
                 _totalSeats = totalSeats;
+                _warning = warning;
             }
 
             UpdateLabelPosition();
@@ -113,6 +122,21 @@ namespace ResortEmpire.UI
         {
             if (BuildingLabel != null)
                 BuildingLabel.gameObject.SetActive(false);
+        }
+
+
+        private string GetWarning(bool currentQueue, bool hasWorker, ServiceType service)
+        {
+            if (_wave.State != WaveState.WaveActive || !currentQueue
+                || !Requests.Queues.TryPeekWaiting(service, out QueuedRequest oldest))
+                return string.Empty;
+
+            if (!hasWorker)
+                return "Chýba pracovník";
+
+            return _wave.ElapsedSeconds - oldest.WaitingSinceSeconds > RatingCatalog.PatienceGrace
+                ? "Dlhé čakanie"
+                : string.Empty;
         }
 
 
