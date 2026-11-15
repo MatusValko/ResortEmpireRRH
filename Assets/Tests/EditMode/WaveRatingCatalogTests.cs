@@ -71,8 +71,6 @@ namespace ResortEmpire.Tests
         [TestCase("UnitFloorPercent", 40f)]
         [TestCase("WaveFloorPercent", 25f)]
         [TestCase("WaveFloorPercent", 70f)]
-        [TestCase("OneStarPercent", -1f)]
-        [TestCase("OneStarPercent", 55f)]
         [TestCase("TwoStarsPercent", 40f)]
         [TestCase("TwoStarsPercent", 70f)]
         [TestCase("ThreeStarsPercent", 55f)]
@@ -130,12 +128,24 @@ namespace ResortEmpire.Tests
 
         [TestCase(55f)]
         [TestCase(60f)]
-        public void WaveFloorCanReachOrExceedTwoStarThreshold(float floor)
+        public void WaveFloorMakingOneStarUnreachableIsRejected(float floor)
+        {
+            SetField("WaveFloorPercent", floor);
+
+            Assert.That(_catalog.TryValidate(out string error), Is.False);
+            Assert.That(error, Is.Not.Null.And.Not.Empty);
+        }
+
+
+        [TestCase(30f)]
+        [TestCase(40f)]
+        [TestCase(50f)]
+        public void WaveFloorMatchesMinimumRating(float floor)
         {
             SetField("WaveFloorPercent", floor);
 
             Assert.That(_catalog.TryValidate(out string error), Is.True, error);
-            Assert.That(_catalog.GetRatingThreshold(WaveRating.OneStar), Is.EqualTo(40f));
+            Assert.That(_catalog.WaveFloor, Is.EqualTo(_catalog.GetRatingThreshold(WaveRating.OneStar)));
         }
 
 

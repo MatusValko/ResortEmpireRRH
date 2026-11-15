@@ -20,8 +20,6 @@ namespace ResortEmpire.Waves
         [Tooltip("Other services have a weight of 1.")]
         [SerializeField, Range(1f, 3f)] private float OceanViewWeight = 1.5f;
 
-        [SerializeField, Range(0f, 100f)] private float OneStarPercent = 40f;
-
         [SerializeField, Range(0f, 100f)] private float TwoStarsPercent = 55f;
 
         [SerializeField, Range(0f, 100f)] private float ThreeStarsPercent = 70f;
@@ -46,7 +44,7 @@ namespace ResortEmpire.Waves
         {
             return rating switch
             {
-                WaveRating.OneStar => OneStarPercent,
+                WaveRating.OneStar => WaveFloorPercent,
                 WaveRating.TwoStars => TwoStarsPercent,
                 WaveRating.ThreeStars => ThreeStarsPercent,
                 WaveRating.FourStars => FourStarsPercent,
@@ -75,7 +73,7 @@ namespace ResortEmpire.Waves
             }
 
             if (!IsPercent(UnitFloorPercent) || !IsPercent(WaveFloorPercent)
-                || !IsPercent(OneStarPercent) || !IsPercent(TwoStarsPercent) || !IsPercent(ThreeStarsPercent)
+                || !IsPercent(TwoStarsPercent) || !IsPercent(ThreeStarsPercent)
                 || !IsPercent(FourStarsPercent) || !IsPercent(FiveStarsPercent))
             {
                 error = "Satisfaction floors and rating thresholds must be finite percentages from 0 to 100.";
@@ -83,14 +81,14 @@ namespace ResortEmpire.Waves
                 return false;
             }
 
-            if (!(UnitFloorPercent < WaveFloorPercent && WaveFloorPercent < ThreeStarsPercent))
+            if (!(UnitFloorPercent < WaveFloorPercent && WaveFloorPercent < TwoStarsPercent))
             {
-                error = "Require unit floor < wave floor < 3 stars.";
+                error = "Require unit floor < wave floor (1 star) < 2 stars so the lowest rating remains reachable.";
 
                 return false;
             }
 
-            if (!(OneStarPercent < TwoStarsPercent && TwoStarsPercent < ThreeStarsPercent && ThreeStarsPercent < FourStarsPercent
+            if (!(TwoStarsPercent < ThreeStarsPercent && ThreeStarsPercent < FourStarsPercent
                 && FourStarsPercent < FiveStarsPercent && FiveStarsPercent < 100f))
             {
                 error = "Require 1 star < 2 stars < 3 stars < 4 stars < 5 stars < Perfect (100%).";
