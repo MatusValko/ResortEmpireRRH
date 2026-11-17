@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 
+using ResortEmpire.Economy;
 using ResortEmpire.Requests;
 using ResortEmpire.Services;
 using UnityEngine;
@@ -29,6 +30,8 @@ namespace ResortEmpire.Buildings
         public event Action<ServiceBuilding, QueuedRequest> ServiceStarted;
 
         public event Action<ServiceBuilding, QueuedRequest> ServiceCompleted;
+
+        public event Action<ServiceBuilding> Upgraded;
 
 
         public ServiceBuilding(BuildingDefinition definition)
@@ -62,6 +65,13 @@ namespace ResortEmpire.Buildings
         public int CurrentLevel => _level;
 
         public int MaxLevel => _definition.MaxLevel;
+
+        public bool IsMaxLevel => _level >= _definition.MaxLevel;
+
+        // Zero when the building is at its last level
+        public int NextUpgradeCost => IsMaxLevel ? 0 : _definition.GetUpgradeCost(_level + 1);
+
+        public int NextLevelSeats => IsMaxLevel ? TotalSeats : _definition.GetSeatsForLevel(_level + 1);
 
         public bool HasWorker => _workerAssigned;
 
@@ -196,13 +206,23 @@ namespace ResortEmpire.Buildings
         }
 
 
-        public bool TryUpgrade()
+        public bool CanAffordUpgrade(CoinWallet wallet)
         {
-            if (_level >= _definition.MaxLevel)
+            return !IsMaxLevel && wallet != null && wallet.CanAfford(NextUpgradeCost);
+        }
+
+        public bool TryUpgrade(CoinWallet wallet)
+        {
+            if (!CanAffordUpgrade(wallet))
+                return false;
+
+            int cost = NextUpgradeCost;
+            if (cost > 0 && !wallet.TrySpend(cost))
                 return false;
 
             _level++;
 
+            Upgraded?.Invoke(this);
             StateChanged?.Invoke(this);
 
             return true;

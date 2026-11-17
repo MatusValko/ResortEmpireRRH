@@ -18,6 +18,9 @@ namespace ResortEmpire.Buildings
 
         [SerializeField, Min(1)] private int[] SeatsPerLevel = { 3, 5, 7 };
 
+        [Tooltip("Coins to reach level 2, level 3 and so on. One entry less than there are levels.")]
+        [SerializeField, Min(0)] private int[] UpgradeCosts = { 500, 1200 };
+
         [Tooltip("Speed factor with a worker assigned.")]
         [SerializeField, Range(0.01f, 1f)] private float StaffedUtilization = 1f;
 
@@ -46,6 +49,15 @@ namespace ResortEmpire.Buildings
                 throw new ArgumentOutOfRangeException(nameof(level), level, $"Levels range from 1 to {MaxLevel}.");
 
             return SeatsPerLevel[level - 1];
+        }
+
+
+        public int GetUpgradeCost(int targetLevel)
+        {
+            if (targetLevel < 2 || targetLevel > MaxLevel)
+                throw new ArgumentOutOfRangeException(nameof(targetLevel), targetLevel, $"Upgrades lead to levels 2 to {MaxLevel}.");
+
+            return UpgradeCosts[targetLevel - 2];
         }
 
 
@@ -98,6 +110,23 @@ namespace ResortEmpire.Buildings
                 if (i > 0 && SeatsPerLevel[i] < SeatsPerLevel[i - 1])
                 {
                     error = $"Level {i + 1} must not provide fewer seats than the previous level.";
+
+                    return false;
+                }
+            }
+
+            if (UpgradeCosts == null || UpgradeCosts.Length != SeatsPerLevel.Length - 1)
+            {
+                error = $"The building needs {SeatsPerLevel.Length - 1} upgrade costs, one for each level after the first.";
+
+                return false;
+            }
+
+            for (int i = 0; i < UpgradeCosts.Length; i++)
+            {
+                if (UpgradeCosts[i] < 0)
+                {
+                    error = $"Upgrade cost to level {i + 2} must not be negative.";
 
                     return false;
                 }
