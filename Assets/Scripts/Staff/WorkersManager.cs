@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-
 using ResortEmpire.Buildings;
 using ResortEmpire.Services;
 using UnityEngine;
@@ -8,9 +7,8 @@ using UnityEngine.InputSystem;
 
 public class WorkersManagers : MonoBehaviour
 {
+    public enum ManagerMode { worker, free }
 
-    public enum ManagerMode{worker,free}
-    
     public Worker chosenWorker;
     public ManagerMode mode;
 
@@ -23,17 +21,17 @@ public class WorkersManagers : MonoBehaviour
     public GameObject UI;
 
     [Header("Buildings Highlighting")]
-     public string shaderPropertyName = "OutlineSize";
+    public string shaderPropertyName = "OutlineSize";
 
-     private GameObject[] buildings;
-     private GameObject[] workers;
+    private GameObject[] buildings;
+    private GameObject[] workers;
 
     private readonly List<RaycastResult> _uiRaycastResults = new();
-    
+
     void Start()
     {
         mode = ManagerMode.free;
-        
+
         chosenWorker = null;
         if (UI != null)
             UI.SetActive(false);
@@ -41,7 +39,7 @@ public class WorkersManagers : MonoBehaviour
         workers = GameObject.FindGameObjectsWithTag("Worker");
         buildings = GameObject.FindGameObjectsWithTag("Building");
 
-        System.Collections.Generic.List<ServiceBuildingBehaviour> availableBuildings = new();
+        List<ServiceBuildingBehaviour> availableBuildings = new();
 
         foreach (GameObject buildingObject in buildings)
         {
@@ -84,15 +82,10 @@ public class WorkersManagers : MonoBehaviour
             mainCamera = Camera.main;
     }
 
-
-    //Point and click system to assign workers to buildings. How it works:
-    //1. Click on a worker to choose it. The UI will appear.
-    //2. Click on a building to assign the worker to it. The UI will disappear  
-    //optional: click on the UI to cancel the assignment.
     private void Update()
     {
-        if(!isActive) return;
-        
+        if (!isActive) return;
+
         if (Touchscreen.current != null)
         {
             var touch = Touchscreen.current.primaryTouch;
@@ -138,25 +131,20 @@ public class WorkersManagers : MonoBehaviour
             Worker worker = hit.collider.GetComponentInParent<Worker>();
             if (worker != null)
             {
-                ChooseWorker(worker);
-
+                TryAssignWorker(GetAvailableBuilding(), worker);
                 return;
             }
 
             ServiceBuildingBehaviour building = hit.collider.GetComponentInParent<ServiceBuildingBehaviour>();
-            if (building != null && mode == ManagerMode.worker && chosenWorker != null)
-                TryAssignWorker(building, chosenWorker);
+            if (building != null && building.assignedWorker != null)
+                TryAssignWorker(GetAvailableBuilding(), building.assignedWorker);
         }
     }
 
-    
-
-    
     public void TryAssignWorker(ServiceBuildingBehaviour building, Worker worker)
     {
         AssignWorker(building, worker);
     }
-
 
     public void AssignWorker(ServiceBuildingBehaviour building, Worker worker)
     {
@@ -169,17 +157,18 @@ public class WorkersManagers : MonoBehaviour
         }
 
         if (worker.assignedBuilding != null)
+        {
             worker.assignedBuilding.ResetWorkerAssignment();
+            worker.assignedBuilding = null;
+        }
 
-        building.HasWorker = true;
-        worker.assignedBuilding = building;
-        building.assignedWorker = worker;
-        worker.MoveToPoint(building.workerPoint);
-        
+        worker.MoveToBuilding(building);
+
         CancelWorkerAssignment();
     }
 
-    public void ChooseWorker(Worker worker){
+    public void ChooseWorker(Worker worker)
+    {
         if (worker == null || !worker.isActiveAndEnabled)
         {
             CancelWorkerAssignment();
@@ -192,10 +181,10 @@ public class WorkersManagers : MonoBehaviour
         HighlightAvailableBuildings(true);
         if (UI != null)
             UI.SetActive(true);
-
     }
 
-    public void CancelWorkerAssignment(){
+    public void CancelWorkerAssignment()
+    {
         chosenWorker = null;
         mode = ManagerMode.free;
         CancelHighlightBuildings();
@@ -203,20 +192,45 @@ public class WorkersManagers : MonoBehaviour
             UI.SetActive(false);
     }
 
-
-    private static bool CanAssignWorker(ServiceBuildingBehaviour building)
+    private bool CanAssignWorker(ServiceBuildingBehaviour building)
     {
         if (building == null || !building.isActiveAndEnabled || building.workerPoint == null
             || building.HasWorker || building.assignedWorker != null)
             return false;
+
+        if (workers != null)
+        {
+            foreach (GameObject workerObject in workers)
+            {
+                if (workerObject == null) continue;
+                Worker w = workerObject.GetComponent<Worker>();
+                if (w != null && w.targetBuilding == building)
+                    return false;
+            }
+        }
 
         ServiceDestination destination = building.GetComponentInParent<ServiceDestination>();
 
         return destination != null && destination.IsAvailable;
     }
 
-    
-   public void HighlightAvailableBuildings(bool highlight)
+    public ServiceBuildingBehaviour GetAvailableBuilding()
+    {
+        if (buildings == null)
+            return null;
+
+        foreach (GameObject buildingObject in buildings)
+        {
+            ServiceBuildingBehaviour building = buildingObject != null ? buildingObject.GetComponent<ServiceBuildingBehaviour>() : null;
+
+            if (CanAssignWorker(building))
+                return building;
+        }
+
+        return null;
+    }
+
+    public void HighlightAvailableBuildings(bool highlight)
     {
         if (buildings == null)
             return;
@@ -236,14 +250,10 @@ public class WorkersManagers : MonoBehaviour
                 {
                     bool hasProperty = material.HasProperty(shaderPropertyName);
 
-                    Debug.Log($"{material.name} | {shaderPropertyName} | HasProperty: {hasProperty}");
-
                     if (hasProperty)
                     {
                         float intensity = highlight ? building.HighlightIntensity : 0f;
                         material.SetFloat(shaderPropertyName, intensity);
-
-                        Debug.Log($"Set {shaderPropertyName} to {intensity}");
                     }
                 }
             }
@@ -278,7 +288,4 @@ public class WorkersManagers : MonoBehaviour
             }
         }
     }
-
-
-
 }
