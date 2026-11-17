@@ -1,33 +1,48 @@
+using System.Collections;
 using ResortEmpire.Buildings;
 using UnityEngine;
-using System.Collections; // Потрібно для IEnumerator
 
 public class Worker : MonoBehaviour
 {
     public ServiceBuildingBehaviour assignedBuilding;
-    public float moveSpeed = 5f; // Швидкість переміщення
-    
+    public ServiceBuildingBehaviour targetBuilding;
+    public float moveSpeed = 5f;
+
     private Coroutine moveCoroutine;
 
-    public void MoveToPoint(Transform targetPoint)
+    public void MoveToBuilding(ServiceBuildingBehaviour building)
     {
+        if (building == null || building.workerPoint == null)
+            return;
+
         if (moveCoroutine != null)
         {
             StopCoroutine(moveCoroutine);
         }
-        
-        moveCoroutine = StartCoroutine(SmoothMove(targetPoint.position));
+
+        targetBuilding = building;
+        moveCoroutine = StartCoroutine(SmoothMove(building));
     }
 
-    private IEnumerator SmoothMove(Vector3 targetPosition)
+    private IEnumerator SmoothMove(ServiceBuildingBehaviour building)
     {
+        Vector3 targetPosition = building.workerPoint.position;
+
         while (Vector3.Distance(transform.position, targetPosition) > 0.01f)
         {
+            targetPosition = building.workerPoint.position;
             transform.position = Vector3.MoveTowards(transform.position, targetPosition, moveSpeed * Time.deltaTime);
-            
-            yield return null; 
+
+            yield return null;
         }
-        
-        transform.position = targetPosition; 
+
+        transform.position = targetPosition;
+
+        assignedBuilding = building;
+        building.HasWorker = true;
+        building.assignedWorker = this;
+
+        targetBuilding = null;
+        moveCoroutine = null;
     }
 }
