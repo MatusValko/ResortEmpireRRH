@@ -64,8 +64,8 @@ chybu a vypnutie adaptéra. Spustenie vlny patrí do `Start` po inicializácii a
 alebo do neskoršieho hráčskeho pokynu, nie do `Awake`.
 
 Generátor neobsluhuje požiadavky a neposiela odhad `UnfinishedRequests` do
-`WaveController`. `ArrivalsFinished` nie je dokončenie vlny. Po pripojení
-sledovania obsluhy bude vlastník požiadaviek posielať skutočný `WaveProgress`.
+`WaveController`. `ArrivalsFinished` nie je dokončenie vlny; adaptér
+`RequestArrivalsBehaviour` hlási skutočný `WaveProgress` vrátane aktívnej obsluhy.
 Obslužné callbacky majú byť na hlavnom vlákne a nemajú vyhadzovať výnimky.
 `RequestCreated` oznamuje vytvorenie, nie potvrdené prijatie radom. Počty a ID sú
 aktualizované pred callbackom. Ak odberateľ vyhodí výnimku, tá sa propaguje;
@@ -134,11 +134,10 @@ zamknutí zostanú existujúce a prichádzajúce požiadavky v rade a neodovzdá
 budove. Odomknutie oznámi dostupnosť a obnoví odovzdávanie vo FIFO poradí;
 už prebiehajúca obsluha sa neruší.
 
-V aktuálnej scéne ešte nie sú implementované Buildings a polia `Receiver` sú
-prázdne, takže požiadavky zostávajú v radoch. Testy používajú iba testovacích
-príjemcov. Automatické hlásenie `WaveProgress` zatiaľ nie je pripojené;
-nulový `TotalWaiting` neukončuje vlnu. Pre budúce prepojenie je pripravený
-`TotalUnfinished` vrátane aktívnej obsluhy, nie odhad podľa voľných miest.
+V scéne sú Requests a Buildings prepojené cez `ServiceBuildingBehaviour`.
+`RequestArrivalsBehaviour.LateUpdate()` automaticky hlási `WaveProgress`
+po spracovaní príchodov. Vlna končí po uzavretí príchodov a pri
+`TotalUnfinished == 0`, nie iba pri prázdnych radoch.
 
 ## WaveController
 
@@ -156,6 +155,7 @@ Ostatné stavy z Build Documentu sú pripravené na neskoršiu implementáciu.
 - `TryStartWave()` — spustenie vlny.
 - `TryReportProgress(WaveProgress)` — aktualizácia priebehu požiadaviek.
 - `TryConfirmResult()` — potvrdenie výsledku a príprava ďalšej vlny.
+- `CanConfirmResult` — prechod je dostupný mimo publikovania udalostí; UI potvrdzuje cez `WaveResultsBehaviour`, aby neobišlo odmeny.
 - `TryPause()` / `TryResume()` — pozastavenie a obnovenie.
 - `AdvanceTime(deltaTime)` — aktualizácia herného času.
 
@@ -164,6 +164,17 @@ Po potvrdení ôsmej vlny sa sekvencia ukončí. Opakované a neplatné prechody
 Ak chýba katalóg alebo je neplatný, `WaveControllerBehaviour` pri `Awake` vypíše
 konkrétnu chybu s názvom objektu a komponent vypne.
 
+## Hodnotenie a odmeny vlny
+
+- `WaveRatingCatalog` obsahuje validované hranice čakania, spokojnosti a ratingu; `WaveSatisfaction` ho overí pri vytvorení a hodnotí iba dokončené požiadavky.
+- `WaveResultsBehaviour` pri `WaveCompleted` vytvorí nemenný `WaveResult` (počty, spokojnosť, rating, Coins, Energy, Resort Value) a publikuje `ResultReady`. `StateChanged(WaveComplete)` prichádza skôr a ešte nezaručuje hotový výsledok.
+- Pred vytvorením výsledku sa spokojnosť a zárobok obnovia z `RequestQueues.GetCompletedRecords()`, aby nezáviseli od poradia callbackov poslednej požiadavky. Results aj Economy obnovujú históriu aj po opätovnom zapnutí.
+- `ResortWindows` zobrazuje `WaveResult` cez `ResultReady`; tlačidlo volá `Results.TryConfirmResult()`. Najprv sa raz vyplatia zmrazené odmeny, až potom sa potvrdí ďalšia vlna. Pri pretečení zostatku sa nič nevyplatí a výsledok ostáva otvorený.
+- `EconomyCatalog` nastavuje Coins podľa služieb a násobiča ratingu, Energy podľa ratingu (0/1/2/3/5/5) a prírastok Resort Value. Prázdna vlna nemá odmeny. Energy nemá herný cap ani regeneráciu; Resort Value sa nemíňa.
+- Počas vlny `ServiceStatusView` ukazuje rady a jednoduché upozornenia na chýbajúceho pracovníka alebo dlhé čakanie. Spokojnosť a rating sa zobrazujú až vo výsledku.
+
+Podrobné pravidlá a dočasný tuning: [wave-rating-notes.md](wave-rating-notes.md).
+
 ## Integrácia systémov
 
 | Systém | Zodpovednosť |
@@ -171,6 +182,7 @@ konkrétnu chybu s názvom objektu a komponent vypne.
 | Waves | Stav, čas a ukončenie vlny |
 | Requests | Príchody, FIFO rady a sledovanie požiadaviek |
 | Buildings | Kapacita a obsluha zákazníkov |
+| Economy | Zárobok za obsluhu a jednorazové vyplatenie odmien |
 | UI | Zobrazenie údajov a ovládanie |
 
 **Pravidlá integrácie:**
@@ -182,7 +194,7 @@ konkrétnu chybu s názvom objektu a komponent vypne.
 - Pri `WavePaused` sa zastaví herný čas; ostatné systémy musia pozastaviť vlastnú simuláciu.
 - Stav sa zatiaľ uchováva iba v pamäti, bez trvalého ukladania.
 
-Konkrétne rozhrania medzi Requests a Buildings treba potvrdiť s ich autormi.
+Prepojenie Requests, Buildings, Economy a výsledkov je zapojené v scéne `Game`.
 
 ## Testovanie
 
@@ -193,9 +205,11 @@ Edit Mode testy v Unity Test Runner:
 - `RequestArrivalsTests` (`RequestArrivals`) — presné počty, časovanie, filtrovanie služieb, pauza a opakované volania; katalóg aj dostupnosť sú vytvorené v pamäti.
 - `RequestQueuesTests` (`RequestQueues`) — FIFO, smerovanie, plné/voľné miesta, zmrazenie čakania, dokončenie práve raz, počty nedokončených, zamknuté budovy, pauza, duplikáty, výnimky a opakované vstupy; príjemcovia a katalóg sú testovacie.
 - `WaveControllerTests` — stavy, prechody, udalosti, pauza a ukončenie ôsmej vlny.
+- `WaveRatingCatalogTests`, `WaveSatisfactionTests` — validácia, čakanie, váhy služieb, hranice ratingu a Perfect bez zaokrúhľovania.
+- `WaveResultsTests`, `EconomyCatalogTests`, `WaveEarningsTests` — poradie udalostí, obnova histórie, konfigurácia odmien, jednorazová výplata a pretečenie zostatkov.
+- `ServiceStatusViewTests` — upozornenia, hranica čakania, zmena pracovníka, prázdny rad a pauza.
 - `PrototypeWavePresetTests` — explicitná kontrola pôvodných hodnôt z Build Documentu.
 
 Testy kontroléra používajú vlastný dočasný katalóg v pamäti, nie herný asset.
-Po integrácii Requests/Buildings treba overiť spoločnú pauzu a správny okamih
-`ArrivalsComplete`. Edit Mode test callbacku nenahrádza pozastavenie aplikácie
+Spoločná pauza a okamih `ArrivalsComplete` sú pokryté testami. Edit Mode test callbacku nenahrádza pozastavenie aplikácie
 na skutočnom Android zariadení.

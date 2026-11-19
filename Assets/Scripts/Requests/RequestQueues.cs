@@ -149,6 +149,16 @@ namespace ResortEmpire.Requests
         }
 
 
+        public IEnumerable<RequestServiceRecord> GetCompletedRecords()
+        {
+            foreach (RequestServiceRecord record in _serviced.Values)
+            {
+                if (record.IsCompleted)
+                    yield return record;
+            }
+        }
+
+
         public bool TryCompleteRequest(RequestArrival request)
         {
             if (!IsActiveWave() || request.WaveNumber != WaveNumber

@@ -36,6 +36,72 @@ namespace ResortEmpire.Tests
         }
 
 
+        [TestCase("ResortValuePerRating")]
+        public void NegativePrototypeRewardsAreInvalid(string field)
+        {
+            SerializedObject serialized = new(_catalog);
+            serialized.FindProperty(field).intValue = -1;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.That(_catalog.TryValidate(out _), Is.False);
+        }
+
+
+        [TestCase(WaveRating.OneStar, 0)]
+        [TestCase(WaveRating.TwoStars, 1)]
+        [TestCase(WaveRating.ThreeStars, 2)]
+        [TestCase(WaveRating.FourStars, 3)]
+        [TestCase(WaveRating.FiveStars, 5)]
+        [TestCase(WaveRating.Perfect, 5)]
+        public void EnergyRewardFollowsRating(WaveRating rating, int expected)
+        {
+            Assert.That(_catalog.GetEnergyReward(rating), Is.EqualTo(expected));
+        }
+
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        [TestCase(4)]
+        [TestCase(5)]
+        public void NegativeEnergyRewardIsInvalid(int index)
+        {
+            SerializedObject serialized = new(_catalog);
+            serialized.FindProperty("EnergyByRating").GetArrayElementAtIndex(index).intValue = -1;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.That(_catalog.TryValidate(out _), Is.False);
+        }
+
+
+        [TestCase(0)]
+        [TestCase(5)]
+        [TestCase(7)]
+        public void IncorrectEnergyRewardCountIsInvalid(int count)
+        {
+            SerializedObject serialized = new(_catalog);
+            serialized.FindProperty("EnergyByRating").arraySize = count;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.That(_catalog.TryValidate(out _), Is.False);
+        }
+
+
+        [Test]
+        public void EnergyRewardCanBeTuned()
+        {
+            SerializedObject serialized = new(_catalog);
+            serialized.FindProperty("EnergyByRating").GetArrayElementAtIndex((int)WaveRating.Perfect).intValue = 7;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.That(_catalog.TryValidate(out string error), Is.True, error);
+            Assert.That(_catalog.GetEnergyReward(WaveRating.Perfect), Is.EqualTo(7));
+            Assert.That(_catalog.GetEnergyReward(WaveRating.FiveStars), Is.EqualTo(5));
+            Assert.Throws<ArgumentOutOfRangeException>(() => _catalog.GetEnergyReward((WaveRating)99));
+        }
+
+
         [Test]
         public void DefaultCatalogPaysForEveryService()
         {

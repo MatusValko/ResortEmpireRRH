@@ -19,6 +19,8 @@ namespace ResortEmpire.UI
 
         [SerializeField] private EconomyBehaviour Economy;
 
+        [SerializeField] private WaveResultsBehaviour Results;
+
         [SerializeField] private GameObject ModalOverlay;
 
         [SerializeField] private TMPro.TMP_Text WindowTitle;
@@ -72,7 +74,7 @@ namespace ResortEmpire.UI
         {
             if (Waves == null || Waves.Controller == null || Requests == null
                 || Requests.Arrivals == null || Requests.Queues == null || Workers == null
-                || Workers.UI == null || Economy == null || ModalOverlay == null || WindowTitle == null
+                || Workers.UI == null || Economy == null || Results == null || ModalOverlay == null || WindowTitle == null
                 || WindowText == null || WindowButton == null || WindowButtonText == null
                 || SecondaryButton == null || SecondaryButtonText == null || WindowScroll == null
                 || ResultPreviewButton == null || AreaButton == null)
@@ -106,6 +108,9 @@ namespace ResortEmpire.UI
                 _wave.StateChanged -= OnStateChanged;
                 _wave.SequenceCompleted -= OnSequenceCompleted;
             }
+
+            if (Results != null)
+                Results.ResultReady -= OnResultReady;
 
             if (ResultPreviewButton != null)
             {
@@ -151,6 +156,8 @@ namespace ResortEmpire.UI
             SecondaryButton.onClick.AddListener(CloseWindow);
             _wave.StateChanged += OnStateChanged;
             _wave.SequenceCompleted += OnSequenceCompleted;
+            Results.ResultReady -= OnResultReady;
+            Results.ResultReady += OnResultReady;
             ResultPreviewButton.interactable = true;
             AreaButton.interactable = true;
             OnStateChanged(_wave.State);
@@ -160,14 +167,21 @@ namespace ResortEmpire.UI
         private void OnStateChanged(WaveState state)
         {
             CloseWindow();
-            if (state == WaveState.WaveComplete && !_wave.IsSequenceComplete)
-            {
-                bool currentArrivals = Requests.Arrivals.WaveNumber == _wave.CurrentWaveNumber;
-                bool currentQueues = Requests.Queues.WaveNumber == _wave.CurrentWaveNumber;
-                string planned = currentArrivals ? Requests.Arrivals.TotalPlanned.ToString() : "—";
-                string completed = currentQueues ? Requests.Queues.TotalCompleted.ToString() : "—";
-                ShowWindow("Výsledok vlny", $"Vlna: {_wave.CurrentWaveNumber}\nPožadované: {planned}\nVybavené: {completed}\nSpokojnosť: —", WindowMode.WaveResult);
-            }
+            if (state == WaveState.WaveComplete && Results.Result.HasValue)
+                OnResultReady(Results.Result.Value);
+        }
+
+
+        private void OnResultReady(WaveResult result)
+        {
+            if (_wave.State != WaveState.WaveComplete || _wave.IsSequenceComplete || result.WaveNumber != _wave.CurrentWaveNumber)
+                return;
+
+            string rating = result.Rating == WaveRating.Perfect ? "Perfect Stay" : $"{(int)result.Rating + 1}/5 hviezdičiek";
+            double percent = result.Rating == WaveRating.Perfect ? 100d : System.Math.Min(99.9d, result.Satisfaction);
+            ShowWindow("Výsledok vlny", $"Vlna: {result.WaveNumber}\nVybavené: {result.CompletedRequests}/{result.PlannedRequests}\n"
+                + $"Spokojnosť: {percent.ToString("F1", CultureInfo.InvariantCulture)} %\nHodnotenie: {rating}\n\n"
+                + $"Odmeny\nCoins: +{result.CoinsReward}\nEnergy: +{result.EnergyReward}\nResort Value: +{result.ResortValueReward}", WindowMode.WaveResult);
         }
 
 
@@ -248,8 +262,13 @@ namespace ResortEmpire.UI
             switch (_mode)
             {
                 case WindowMode.WaveResult:
-                    if (_wave.TryConfirmResult())
+                    if (Results.TryConfirmResult())
                         CloseWindow();
+                    else if (Results.Result.HasValue)
+                    {
+                        OnResultReady(Results.Result.Value);
+                        WindowText.text += "\n\nOdmeny sa nepodarilo prevziať. Skúste znova.";
+                    }
 
                     break;
 

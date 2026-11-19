@@ -14,8 +14,16 @@ namespace ResortEmpire.UI
 
         [SerializeField] private TMP_Text AmountText;
 
+        [SerializeField] private TMP_Text EnergyText;
+
+        [SerializeField] private TMP_Text ResortValueText;
+
 
         private CoinWallet _wallet;
+
+        private long _energy = -1;
+
+        private long _resortValue = -1;
 
 
         // Start, not Awake: the wallet is created in EconomyBehaviour.Awake
@@ -44,6 +52,25 @@ namespace ResortEmpire.UI
         {
             if (_wallet != null)
                 Subscribe();
+        }
+
+
+        private void LateUpdate()
+        {
+            if (Economy == null || Economy.Energy == null)
+                return;
+
+            if (EnergyText != null && _energy != Economy.Energy.Balance)
+            {
+                _energy = Economy.Energy.Balance;
+                EnergyText.text = $"Energy: {_energy.ToString("N0", CultureInfo.InvariantCulture)}";
+            }
+
+            if (ResortValueText != null && _resortValue != Economy.ResortValue)
+            {
+                _resortValue = Economy.ResortValue;
+                ResortValueText.text = $"Resort Value: {_resortValue.ToString("N0", CultureInfo.InvariantCulture)}";
+            }
         }
 
 

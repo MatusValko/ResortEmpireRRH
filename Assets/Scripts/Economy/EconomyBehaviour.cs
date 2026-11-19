@@ -4,7 +4,6 @@ using UnityEngine;
 
 namespace ResortEmpire.Economy
 {
-    // Wave coins payout TryClaimWaveReward
     [DisallowMultipleComponent]
     public sealed class EconomyBehaviour : MonoBehaviour
     {
@@ -22,12 +21,18 @@ namespace ResortEmpire.Economy
 
         private int _claimedWaveNumber;
 
+        private bool _isClaiming;
+
 
         public CoinWallet Wallet { get; private set; }
 
         public WaveEarnings Earnings { get; private set; }
 
-        public bool CanClaimWaveReward => _wave != null && _wave.State == WaveState.WaveComplete
+        public CoinWallet Energy { get; private set; }
+
+        public long ResortValue { get; private set; }
+
+        public bool CanClaimWaveReward => !_isClaiming && _wave != null && _wave.CanConfirmResult
             && _claimedWaveNumber != _wave.CurrentWaveNumber;
 
 
@@ -48,6 +53,7 @@ namespace ResortEmpire.Economy
             }
 
             Wallet = new CoinWallet(Catalog.StartingBalance);
+            Energy = new CoinWallet(0);
             Earnings = new WaveEarnings(Catalog);
         }
 
@@ -63,13 +69,17 @@ namespace ResortEmpire.Economy
             _wave = Waves.Controller;
             _queues = Requests.Queues;
             Subscribe();
+            SynchronizeEarnings();
         }
 
 
         private void OnEnable()
         {
             if (_wave != null)
+            {
                 Subscribe();
+                SynchronizeEarnings();
+            }
         }
 
 
@@ -85,26 +95,53 @@ namespace ResortEmpire.Economy
 
         public long GetWaveReward(WaveRating rating)
         {
+            SynchronizeEarnings();
+
             return Earnings != null ? Earnings.GetReward(rating) : 0;
         }
 
 
-        // Pays the coins of the completed wave, multiplied by its rating. Works once per wave.
-        public bool TryClaimWaveReward(WaveRating rating, out long reward)
+        public long GetWaveEnergyReward(WaveRating rating)
         {
-            reward = 0;
-            if (!CanClaimWaveReward)
+            return Earnings != null && Earnings.CompletedRequests > 0 ? Catalog.GetEnergyReward(rating) : 0;
+        }
+
+
+        public long GetWaveResortValueReward(WaveRating rating)
+        {
+            return Earnings != null && Earnings.CompletedRequests > 0 ? Catalog.GetResortValueReward(rating) : 0;
+        }
+
+
+        // Claims the frozen rewards once; check all balances before changing any of them.
+        public bool TryClaimWaveReward(WaveResult result)
+        {
+            SynchronizeEarnings();
+            if (!CanClaimWaveReward || result.WaveNumber != _wave.CurrentWaveNumber
+                || result.CompletedRequests != Earnings.CompletedRequests
+                || result.CoinsReward < 0 || result.EnergyReward < 0 || result.ResortValueReward < 0
+                || result.CoinsReward > long.MaxValue - Wallet.Balance
+                || result.EnergyReward > long.MaxValue - Energy.Balance
+                || result.ResortValueReward > long.MaxValue - ResortValue)
                 return false;
 
-            long amount = Earnings.GetReward(rating);
-            if (amount > 0 && !Wallet.TryAdd(amount))
-                return false;
+            _isClaiming = true;
+            try
+            {
+                _claimedWaveNumber = result.WaveNumber;
+                Earnings.Reset();
+                ResortValue += result.ResortValueReward;
+                if (result.EnergyReward > 0)
+                    Energy.TryAdd(result.EnergyReward);
+                if (result.CoinsReward > 0)
+                    Wallet.TryAdd(result.CoinsReward);
 
-            reward = amount;
-            _claimedWaveNumber = _wave.CurrentWaveNumber;
-            Earnings.Reset();
-
-            return true;
+                return true;
+            }
+            finally
+            {
+                _isClaiming = false;
+            }
         }
 
 
@@ -128,7 +165,23 @@ namespace ResortEmpire.Economy
 
         private void OnRequestCompleted(RequestServiceRecord record)
         {
-            Earnings.AddCompletedRequest(record.Queued.Request.Service);
+            // A synchronous progress listener may have already rebuilt the final history.
+            if (_claimedWaveNumber != _wave.CurrentWaveNumber && Earnings.CompletedRequests < _queues.TotalCompleted)
+                Earnings.AddCompletedRequest(record.Queued.Request.Service);
+        }
+
+
+        private void SynchronizeEarnings()
+        {
+            if (_queues == null || _isClaiming || _claimedWaveNumber == _wave.CurrentWaveNumber)
+                return;
+
+            Earnings.Reset();
+            if (_queues.WaveNumber == _wave.CurrentWaveNumber)
+            {
+                foreach (RequestServiceRecord record in _queues.GetCompletedRecords())
+                    Earnings.AddCompletedRequest(record.Queued.Request.Service);
+            }
         }
 
 

@@ -25,6 +25,8 @@ namespace ResortEmpire.Waves
 
         public bool IsSequenceComplete { get; private set; }
 
+        public bool CanConfirmResult => !_isPublishing && State == WaveState.WaveComplete && !IsSequenceComplete;
+
         public event Action WaveChanged;
 
         public event Action<WaveState> StateChanged;
@@ -83,7 +85,7 @@ namespace ResortEmpire.Waves
 
         public bool TryConfirmResult()
         {
-            if (_isPublishing || State != WaveState.WaveComplete || IsSequenceComplete)
+            if (!CanConfirmResult)
                 return false;
 
             if (CurrentWaveNumber == WaveCatalog.RequiredWaveCount)
