@@ -22,8 +22,8 @@ Požiadavky zamknutých služieb sa negenerujú, kým hráč príslušnú budovu
 
 ### Priradenie služby budove
 
-Korene prefabov Reception, Restaurant a BeachBar majú komponent `ServiceDestination`:
-Rooms → Reception, Food → Restaurant, Drinks → BeachBar.
+Korene prefabov Hotel, Caffe a Bar majú komponent `ServiceDestination`:
+Rooms → Hotel, Food → Caffe, Drinks → Bar.
 Ostatné systémy čítajú `ServiceDestination.Service`; názov GameObjectu ani text
 nad budovou nie sú identifikátorom služby. Používa sa existujúci `ServiceType`.
 Voliteľné pole `Receiver` odkazuje na komponent Buildings implementujúci

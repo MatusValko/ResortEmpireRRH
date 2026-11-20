@@ -8,9 +8,9 @@ namespace ResortEmpire.Tests
     [Category("RequestBindings")]
     public sealed class ServiceDestinationBindingsTests
     {
-        [TestCase("Reception", ServiceType.Rooms)]
-        [TestCase("Restaurant", ServiceType.Food)]
-        [TestCase("BeachBar", ServiceType.Drinks)]
+        [TestCase("Hotel", ServiceType.Rooms)]
+        [TestCase("Caffe", ServiceType.Food)]
+        [TestCase("Bar", ServiceType.Drinks)]
         public void BuildingPrefabProvidesItsRequiredService(string prefabName, ServiceType expectedService)
         {
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Prefabs/Buildings/{prefabName}.prefab");

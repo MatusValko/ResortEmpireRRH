@@ -22,6 +22,10 @@ public class WorkersManagers : MonoBehaviour
     [SerializeField] private Camera mainCamera;
     [SerializeField] private LayerMask interactableLayer;
 
+    [SerializeField] private Worker WorkerPrefab;
+
+    [SerializeField] private Transform[] WorkerSpawnPoints;
+
     [Header("UI ELEMENTS")]
     public GameObject UI;
 
@@ -85,6 +89,15 @@ public class WorkersManagers : MonoBehaviour
     {
         if (mainCamera == null)
             mainCamera = Camera.main;
+
+        if (WorkerPrefab == null || WorkerSpawnPoints == null)
+            return;
+
+        foreach (Transform point in WorkerSpawnPoints)
+        {
+            if (point != null)
+                Instantiate(WorkerPrefab, point.position, point.rotation, point.parent);
+        }
     }
 
     private void Update()

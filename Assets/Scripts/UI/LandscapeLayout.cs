@@ -23,6 +23,9 @@ namespace ResortEmpire.UI
 
         [SerializeField] private ServiceDestination[] Destinations = Array.Empty<ServiceDestination>();
 
+        [Tooltip("Fixed framing bounds projected onto the camera axes, relative to the world origin.")]
+        [SerializeField] private Bounds BuildingFramingBounds;
+
 
         private readonly Vector3[] _corners = new Vector3[4];
 
@@ -128,15 +131,24 @@ namespace ResortEmpire.UI
                 }
             }
 
-            foreach (ServiceDestination destination in Destinations)
+            if (BuildingFramingBounds.size != Vector3.zero)
             {
-                IncludeBounds(new Bounds(destination.transform.position, Vector3.zero));
-                foreach (Renderer renderer in destination.GetComponentsInChildren<Renderer>())
-                    IncludeBounds(renderer.bounds);
+                Vector3 cameraOffset = Quaternion.Inverse(ResortCamera.transform.rotation) * ResortCamera.transform.position;
+                min = BuildingFramingBounds.min - cameraOffset;
+                max = BuildingFramingBounds.max - cameraOffset;
+            }
+            else
+            {
+                foreach (ServiceDestination destination in Destinations)
+                {
+                    IncludeBounds(new Bounds(destination.transform.position, Vector3.zero));
+                    foreach (Renderer renderer in destination.GetComponentsInChildren<Renderer>())
+                        IncludeBounds(renderer.bounds);
 
-                ServiceBuildingBehaviour building = destination.GetComponent<ServiceBuildingBehaviour>();
-                if (building != null && building.workerPoint != null)
-                    IncludeBounds(new Bounds(building.workerPoint.position, Vector3.one));
+                    ServiceBuildingBehaviour building = destination.GetComponent<ServiceBuildingBehaviour>();
+                    if (building != null && building.workerPoint != null)
+                        IncludeBounds(new Bounds(building.workerPoint.position, Vector3.one));
+                }
             }
 
             Rect pixels = ResortCamera.pixelRect;
