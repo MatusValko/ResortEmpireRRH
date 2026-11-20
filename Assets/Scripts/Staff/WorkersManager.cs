@@ -216,6 +216,11 @@ public class WorkersManagers : MonoBehaviour
             UI.SetActive(false);
     }
 
+    public bool CanMoveChosenWorkerTo(ServiceBuildingBehaviour building)
+    {
+        return isActiveAndEnabled && chosenWorker != null && chosenWorker.isActiveAndEnabled && CanAssignWorker(building);
+    }
+
     private bool CanAssignWorker(ServiceBuildingBehaviour building)
     {
         if (building == null || !building.isActiveAndEnabled || building.workerPoint == null
@@ -256,7 +261,7 @@ public class WorkersManagers : MonoBehaviour
 
     public void HighlightAvailableBuildings(bool highlight)
     {
-        if (buildings == null)
+        if (buildings == null || string.IsNullOrEmpty(shaderPropertyName))
             return;
 
         foreach (GameObject buildingObject in buildings)
@@ -286,7 +291,7 @@ public class WorkersManagers : MonoBehaviour
 
     public void CancelHighlightBuildings()
     {
-        if (buildings == null)
+        if (buildings == null || string.IsNullOrEmpty(shaderPropertyName))
             return;
 
         foreach (GameObject buildingObject in buildings)

@@ -19,36 +19,37 @@ namespace ResortEmpire.Waves
             [SerializeField] private Transform[] Waypoints;
 
             private readonly Queue<CustomerWalk> _waiting = new();
-            private int _earlyRequests;
+            private readonly Queue<long> _earlyRequests = new();
+            private readonly List<CustomerWalk> _customers = new();
 
             public ServiceType Service => Destination.Service;
             public Transform[] Path => Waypoints;
+            public IReadOnlyList<CustomerWalk> Customers => _customers;
             public bool IsConfigured => Destination != null && Waypoints is { Length: > 0 }
                 && Array.TrueForAll(Waypoints, point => point != null);
 
             public void Add(CustomerWalk customer)
             {
-                if (_earlyRequests == 0)
-                    _waiting.Enqueue(customer);
+                _customers.Add(customer);
+                if (_earlyRequests.TryDequeue(out long requestId))
+                    customer.SendToBuilding(requestId);
                 else
-                {
-                    _earlyRequests--;
-                    customer.SendToBuilding();
-                }
+                    _waiting.Enqueue(customer);
             }
 
-            public void SendNext()
+            public void SendNext(long requestId)
             {
                 if (_waiting.TryDequeue(out CustomerWalk customer))
-                    customer.SendToBuilding();
+                    customer.SendToBuilding(requestId);
                 else
-                    _earlyRequests++;
+                    _earlyRequests.Enqueue(requestId);
             }
 
             public void Clear()
             {
                 _waiting.Clear();
-                _earlyRequests = 0;
+                _earlyRequests.Clear();
+                _customers.Clear();
             }
         }
 
@@ -84,6 +85,35 @@ namespace ResortEmpire.Waves
         private WaveController _wave;
         private RequestArrivals _arrivals;
         private Transform _customers;
+
+
+        internal (int Aboard, int Ashore, int Walking, int AtBuilding) GetCustomerLocations(ServiceType service)
+        {
+            if (_customers == null || _arrivals.WaveNumber != _wave.CurrentWaveNumber
+                || !_routes.TryGetValue(service, out Route route))
+                return default;
+
+            int aboard = _arrivals.GetPlannedCount(service);
+            int ashore = 0;
+            int walking = 0;
+            int atBuilding = 0;
+            foreach (CustomerWalk customer in route.Customers)
+            {
+                if (!customer.IsAshore)
+                    continue;
+
+                aboard--;
+                if (!customer.IsHeadingToBuilding)
+                    ashore++;
+                else if (!customer.IsAtBuilding)
+                    walking++;
+                else if (!Requests.Queues.TryGetServiceRecord(customer.RequestId, out RequestServiceRecord record)
+                    || !record.IsCompleted)
+                    atBuilding++;
+            }
+
+            return (aboard, ashore, walking, atBuilding);
+        }
 
 
         private void Start()
@@ -150,7 +180,7 @@ namespace ResortEmpire.Waves
         private void OnRequestCreated(RequestArrival request)
         {
             if (_customers != null && _routes.TryGetValue(request.Service, out Route route))
-                route.SendNext();
+                route.SendNext(request.Id);
         }
 
 

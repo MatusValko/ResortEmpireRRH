@@ -23,11 +23,25 @@ namespace ResortEmpire.UI
 
         [SerializeField] private TMPro.TMP_Text CountsText;
 
+        [SerializeField] private CustomerArrivalBehaviour Customers;
+
+        [SerializeField] private WorkersManagers Workers;
+
+        [SerializeField] private UnityEngine.UI.Button AssignmentButton;
+
+        [SerializeField] private LineRenderer AssignmentOutline;
+
         [SerializeField] private RectTransform BuildingLabel;
 
         [SerializeField] private TMPro.TMP_Text BuildingText;
 
         [SerializeField] private Vector3 BuildingLabelOffset = new(0f, 2.2f, 0f);
+
+        [SerializeField] private RectTransform OccupancyBadge;
+
+        [SerializeField] private TMPro.TMP_Text OccupancyText;
+
+        [SerializeField] private Vector3 OccupancyOffset;
 
 
         private WaveController _wave;
@@ -39,6 +53,8 @@ namespace ResortEmpire.UI
         private int _planned = -1;
 
         private int _completed = -1;
+        private (int Aboard, int Ashore, int Walking, int AtBuilding) _locations;
+        private (int Occupied, int Total) _occupancy = (-1, -1);
 
         private int _waiting = -1;
 
@@ -49,6 +65,13 @@ namespace ResortEmpire.UI
         private bool _hasWorker;
 
         private string _warning;
+
+
+        private void OnEnable()
+        {
+            if (AssignmentButton != null)
+                AssignmentButton.onClick.AddListener(MoveChosenWorker);
+        }
 
 
         private void Start()
@@ -65,7 +88,7 @@ namespace ResortEmpire.UI
             }
 
             _labelParent = BuildingLabel.parent as RectTransform;
-            _labelCanvas = BuildingText.canvas;
+            _labelCanvas = BuildingLabel.GetComponentInParent<Canvas>(true);
             if (_labelParent == null || _labelCanvas == null)
             {
                 DisableWithError("Building label must be inside a Canvas with a RectTransform parent.");
@@ -74,6 +97,8 @@ namespace ResortEmpire.UI
             }
 
             _wave = Waves.Controller;
+            if (AssignmentButton != null)
+                BuildingText.text = "Presunúť sem";
         }
 
 
@@ -88,19 +113,34 @@ namespace ResortEmpire.UI
                 : Destination.IsAvailable ? _wave.CurrentWave.GetRequestCount(service) : 0;
             bool currentQueue = Requests.Queues.WaveNumber == _wave.CurrentWaveNumber;
             int completed = currentQueue ? Requests.Queues.GetCompletedCount(service) : 0;
+            var locations = Customers != null ? Customers.GetCustomerLocations(service) : default;
+            if (planned != _planned || completed != _completed || locations != _locations)
+            {
+                CountsText.text = Customers == null
+                    ? $"Požadované: {planned}\nVybavené: {completed}"
+                    : $"Plán: {planned} · Hotovo: {completed}\nLoď: {locations.Aboard} · Breh: {locations.Ashore}\nCesta: {locations.Walking} · Budova: {locations.AtBuilding}";
+                _planned = planned;
+                _completed = completed;
+                _locations = locations;
+            }
+
+            UpdateOccupancy();
+
+            if (AssignmentButton != null)
+            {
+                bool canMoveHere = Workers != null && Workers.CanMoveChosenWorkerTo(Building);
+                if (AssignmentOutline != null)
+                    AssignmentOutline.enabled = canMoveHere;
+                UpdateLabelPosition(BuildingLabel, canMoveHere,
+                    canMoveHere ? Building.workerPoint.position + BuildingLabelOffset : Vector3.zero);
+                return;
+            }
+
             int waiting = currentQueue ? Requests.Queues.GetWaitingCount(service) : 0;
             bool hasWorker = Building.HasWorker;
             int freeSeats = Building.Building != null ? Building.Building.FreeSeats : -1;
             int totalSeats = Building.Building != null ? Building.Building.TotalSeats : -1;
             string warning = GetWarning(currentQueue, hasWorker, service);
-
-            if (planned != _planned || completed != _completed)
-            {
-                CountsText.text = $"Požadované: {planned}\nVybavené: {completed}";
-                _planned = planned;
-                _completed = completed;
-            }
-
             if (waiting != _waiting || hasWorker != _hasWorker || freeSeats != _freeSeats || totalSeats != _totalSeats || warning != _warning)
             {
                 string seats = totalSeats >= 0 ? $"{freeSeats}/{totalSeats} voľné" : "—";
@@ -114,14 +154,49 @@ namespace ResortEmpire.UI
                 _warning = warning;
             }
 
-            UpdateLabelPosition();
+            UpdateLabelPosition(BuildingLabel, Building.gameObject.activeInHierarchy,
+                Destination.transform.position + BuildingLabelOffset);
         }
 
 
         private void OnDisable()
         {
+            if (AssignmentButton != null)
+                AssignmentButton.onClick.RemoveListener(MoveChosenWorker);
+            if (AssignmentOutline != null)
+                AssignmentOutline.enabled = false;
             if (BuildingLabel != null)
                 BuildingLabel.gameObject.SetActive(false);
+            if (OccupancyBadge != null)
+                OccupancyBadge.gameObject.SetActive(false);
+        }
+
+
+        private void UpdateOccupancy()
+        {
+            if (OccupancyBadge == null || OccupancyText == null)
+                return;
+
+            ServiceBuilding service = Building.Building;
+            bool show = service != null && Destination.IsAvailable;
+            if (show)
+            {
+                var occupancy = (service.InServiceCount, service.TotalSeats);
+                if (occupancy != _occupancy)
+                {
+                    OccupancyText.text = $"{occupancy.InServiceCount}/{occupancy.TotalSeats}";
+                    _occupancy = occupancy;
+                }
+            }
+
+            UpdateLabelPosition(OccupancyBadge, show, Destination.transform.position + OccupancyOffset);
+        }
+
+
+        private void MoveChosenWorker()
+        {
+            if (Workers != null && Workers.CanMoveChosenWorkerTo(Building))
+                Workers.TryAssignWorker(Building, Workers.chosenWorker);
         }
 
 
@@ -140,13 +215,13 @@ namespace ResortEmpire.UI
         }
 
 
-        private void UpdateLabelPosition()
+        private void UpdateLabelPosition(RectTransform label, bool show, Vector3 worldPosition)
         {
-            Vector3 screenPosition = ResortCamera.WorldToScreenPoint(Destination.transform.position + BuildingLabelOffset);
-            bool visible = Building.gameObject.activeInHierarchy && screenPosition.z > 0f
+            Vector3 screenPosition = ResortCamera.WorldToScreenPoint(worldPosition);
+            bool visible = show && screenPosition.z > 0f
                 && ResortCamera.pixelRect.Contains(new Vector2(screenPosition.x, screenPosition.y));
-            if (BuildingLabel.gameObject.activeSelf != visible)
-                BuildingLabel.gameObject.SetActive(visible);
+            if (label.gameObject.activeSelf != visible)
+                label.gameObject.SetActive(visible);
 
             if (!visible)
                 return;
@@ -157,15 +232,15 @@ namespace ResortEmpire.UI
 
             RectTransformUtility.ScreenPointToLocalPointInRectangle(_labelParent, ResortCamera.pixelRect.min, uiCamera, out Vector2 min);
             RectTransformUtility.ScreenPointToLocalPointInRectangle(_labelParent, ResortCamera.pixelRect.max, uiCamera, out Vector2 max);
-            Vector2 size = BuildingLabel.rect.size;
-            Vector2 pivot = BuildingLabel.pivot;
+            Vector2 size = label.rect.size;
+            Vector2 pivot = label.pivot;
             position.x = size.x <= max.x - min.x
                 ? Mathf.Clamp(position.x, min.x + size.x * pivot.x, max.x - size.x * (1f - pivot.x))
                 : (min.x + max.x) * 0.5f + size.x * (pivot.x - 0.5f);
             position.y = size.y <= max.y - min.y
                 ? Mathf.Clamp(position.y, min.y + size.y * pivot.y, max.y - size.y * (1f - pivot.y))
                 : (min.y + max.y) * 0.5f + size.y * (pivot.y - 0.5f);
-            BuildingLabel.anchoredPosition = position;
+            label.anchoredPosition = position;
         }
 
 

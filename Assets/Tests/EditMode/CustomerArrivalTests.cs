@@ -33,7 +33,7 @@ namespace ResortEmpire.Tests
                 presentationType.GetField("_customers", PrivateInstance).SetValue(presentation, host.transform);
                 var send = presentationType.GetMethod("OnRequestCreated", PrivateInstance);
                 var add = routeType.GetMethod("Add");
-                var requested = typeof(CustomerWalk).GetField("_requested", PrivateInstance);
+                var requestId = typeof(CustomerWalk).GetProperty("RequestId", PrivateInstance);
                 var requestConstructor = typeof(RequestArrival).GetConstructor(PrivateInstance, null,
                     new[] { typeof(long), typeof(int), typeof(ServiceType), typeof(double) }, null);
 
@@ -55,16 +55,16 @@ namespace ResortEmpire.Tests
                 CustomerWalk firstDrinksGuest = AddCustomer(drinks);
                 CustomerWalk secondDrinksGuest = AddCustomer(drinks);
                 CustomerWalk foodGuest = AddCustomer(food);
-                Assert.That(requested.GetValue(firstDrinksGuest), Is.True);
-                Assert.That(requested.GetValue(secondDrinksGuest), Is.False);
-                Assert.That(requested.GetValue(foodGuest), Is.False);
+                Assert.That(requestId.GetValue(firstDrinksGuest), Is.EqualTo(1L));
+                Assert.That(requestId.GetValue(secondDrinksGuest), Is.EqualTo(0L));
+                Assert.That(requestId.GetValue(foodGuest), Is.EqualTo(0L));
 
                 Send(ServiceType.Food, 2);
-                Assert.That(requested.GetValue(foodGuest), Is.True);
-                Assert.That(requested.GetValue(secondDrinksGuest), Is.False);
+                Assert.That(requestId.GetValue(foodGuest), Is.EqualTo(2L));
+                Assert.That(requestId.GetValue(secondDrinksGuest), Is.EqualTo(0L));
 
                 Send(ServiceType.Drinks, 3);
-                Assert.That(requested.GetValue(secondDrinksGuest), Is.True);
+                Assert.That(requestId.GetValue(secondDrinksGuest), Is.EqualTo(3L));
             }
             finally
             {

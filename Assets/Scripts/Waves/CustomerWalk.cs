@@ -18,10 +18,15 @@ namespace ResortEmpire.Waves
         private static readonly int Walk = UnityEngine.Animator.StringToHash("Walk");
 
         private IWaveContext _wave;
-        private bool _requested;
 
 
         internal bool IsAshore { get; private set; }
+
+        internal bool IsHeadingToBuilding { get; private set; }
+
+        internal bool IsAtBuilding { get; private set; }
+
+        internal long RequestId { get; private set; }
 
 
         internal void Begin(IWaveContext wave, Vector3 shore, Vector3 stagingPosition, Transform[] path)
@@ -31,9 +36,9 @@ namespace ResortEmpire.Waves
         }
 
 
-        internal void SendToBuilding()
+        internal void SendToBuilding(long requestId)
         {
-            _requested = true;
+            RequestId = requestId;
         }
 
 
@@ -45,17 +50,19 @@ namespace ResortEmpire.Waves
             yield return MoveTo(stagingPosition);
 
             SetWalking(false);
-            while (!_requested || _wave.State == WaveState.WavePaused)
+            while (RequestId == 0 || _wave.State == WaveState.WavePaused)
             {
                 Animator.speed = _wave.State == WaveState.WavePaused ? 0f : 1f;
                 yield return null;
             }
 
+            IsHeadingToBuilding = true;
             SetWalking(true);
             foreach (Transform point in path)
                 yield return MoveTo(point.position);
 
-            Destroy(gameObject);
+            IsAtBuilding = true;
+            Animator.gameObject.SetActive(false);
         }
 
 
