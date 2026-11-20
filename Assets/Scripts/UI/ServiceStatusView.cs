@@ -25,12 +25,6 @@ namespace ResortEmpire.UI
 
         [SerializeField] private CustomerArrivalBehaviour Customers;
 
-        [SerializeField] private WorkersManagers Workers;
-
-        [SerializeField] private UnityEngine.UI.Button AssignmentButton;
-
-        [SerializeField] private LineRenderer AssignmentOutline;
-
         [SerializeField] private RectTransform BuildingLabel;
 
         [SerializeField] private TMPro.TMP_Text BuildingText;
@@ -58,20 +52,7 @@ namespace ResortEmpire.UI
 
         private int _waiting = -1;
 
-        private int _freeSeats = -1;
-
-        private int _totalSeats = -1;
-
-        private bool _hasWorker;
-
         private string _warning;
-
-
-        private void OnEnable()
-        {
-            if (AssignmentButton != null)
-                AssignmentButton.onClick.AddListener(MoveChosenWorker);
-        }
 
 
         private void Start()
@@ -97,8 +78,6 @@ namespace ResortEmpire.UI
             }
 
             _wave = Waves.Controller;
-            if (AssignmentButton != null)
-                BuildingText.text = "Presunúť sem";
         }
 
 
@@ -126,45 +105,24 @@ namespace ResortEmpire.UI
 
             UpdateOccupancy();
 
-            if (AssignmentButton != null)
-            {
-                bool canMoveHere = Workers != null && Workers.CanMoveChosenWorkerTo(Building);
-                if (AssignmentOutline != null)
-                    AssignmentOutline.enabled = canMoveHere;
-                UpdateLabelPosition(BuildingLabel, canMoveHere,
-                    canMoveHere ? Building.workerPoint.position + BuildingLabelOffset : Vector3.zero);
-                return;
-            }
-
             int waiting = currentQueue ? Requests.Queues.GetWaitingCount(service) : 0;
-            bool hasWorker = Building.HasWorker;
-            int freeSeats = Building.Building != null ? Building.Building.FreeSeats : -1;
-            int totalSeats = Building.Building != null ? Building.Building.TotalSeats : -1;
-            string warning = GetWarning(currentQueue, hasWorker, service);
-            if (waiting != _waiting || hasWorker != _hasWorker || freeSeats != _freeSeats || totalSeats != _totalSeats || warning != _warning)
+            string warning = GetWarning(currentQueue, Building.HasWorker, service);
+            if (waiting != _waiting || warning != _warning)
             {
-                string seats = totalSeats >= 0 ? $"{freeSeats}/{totalSeats} voľné" : "—";
-                BuildingText.text = $"Miesta: {seats}\nRad: {waiting}  ·  Pracovník: {(hasWorker ? "áno" : "nie")}";
+                BuildingText.text = $"Rad: {waiting}";
                 if (warning.Length > 0)
                     BuildingText.text += $"\n{warning}";
                 _waiting = waiting;
-                _hasWorker = hasWorker;
-                _freeSeats = freeSeats;
-                _totalSeats = totalSeats;
                 _warning = warning;
             }
 
-            UpdateLabelPosition(BuildingLabel, Building.gameObject.activeInHierarchy,
+            UpdateLabelPosition(BuildingLabel, _wave.State == WaveState.WaveActive && waiting > 0 && Building.gameObject.activeInHierarchy,
                 Destination.transform.position + BuildingLabelOffset);
         }
 
 
         private void OnDisable()
         {
-            if (AssignmentButton != null)
-                AssignmentButton.onClick.RemoveListener(MoveChosenWorker);
-            if (AssignmentOutline != null)
-                AssignmentOutline.enabled = false;
             if (BuildingLabel != null)
                 BuildingLabel.gameObject.SetActive(false);
             if (OccupancyBadge != null)
@@ -190,13 +148,6 @@ namespace ResortEmpire.UI
             }
 
             UpdateLabelPosition(OccupancyBadge, show, Destination.transform.position + OccupancyOffset);
-        }
-
-
-        private void MoveChosenWorker()
-        {
-            if (Workers != null && Workers.CanMoveChosenWorkerTo(Building))
-                Workers.TryAssignWorker(Building, Workers.chosenWorker);
         }
 
 

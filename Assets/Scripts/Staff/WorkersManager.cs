@@ -216,11 +216,6 @@ public class WorkersManagers : MonoBehaviour
             UI.SetActive(false);
     }
 
-    public bool CanMoveChosenWorkerTo(ServiceBuildingBehaviour building)
-    {
-        return isActiveAndEnabled && chosenWorker != null && chosenWorker.isActiveAndEnabled && CanAssignWorker(building);
-    }
-
     private bool CanAssignWorker(ServiceBuildingBehaviour building)
     {
         if (building == null || !building.isActiveAndEnabled || building.workerPoint == null
