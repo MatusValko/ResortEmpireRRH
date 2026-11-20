@@ -8,6 +8,7 @@ public class Worker : MonoBehaviour
 
     public ServiceBuildingBehaviour assignedBuilding;
     public ServiceBuildingBehaviour targetBuilding;
+    public bool IsWalking => targetBuilding != null;
     public float moveSpeed = 5f;
     public float rotationSpeed = 720f;
 
