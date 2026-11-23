@@ -3303,6 +3303,7 @@ GameObject:
   - component: {fileID: 460856418}
   - component: {fileID: 460856417}
   - component: {fileID: 460856416}
+  - component: {fileID: 7400000103}
   m_Layer: 5
   m_Name: DrinksStatus
   m_TagString: Untagged
@@ -4285,6 +4286,7 @@ GameObject:
   - component: {fileID: 573151089}
   - component: {fileID: 573151088}
   - component: {fileID: 573151087}
+  - component: {fileID: 7400000102}
   m_Layer: 5
   m_Name: FoodStatus
   m_TagString: Untagged
@@ -6499,10 +6501,8 @@ MonoBehaviour:
   Workers: {fileID: 1100161868}
   Destination: {fileID: 1936262263}
   Building: {fileID: 1936262265}
-  DisplayName: "Re\u0161taur\xE1cia"
   MoveButton: {fileID: 1301677850}
   MoveButtonText: {fileID: 278457437}
-  UpgradeButton: {fileID: 302670620}
 --- !u!114 &1081751546
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6788,6 +6788,7 @@ GameObject:
   - component: {fileID: 1133894054}
   - component: {fileID: 1133894053}
   - component: {fileID: 1133894052}
+  - component: {fileID: 7400000101}
   m_Layer: 5
   m_Name: RoomsStatus
   m_TagString: Untagged
@@ -8641,10 +8642,8 @@ MonoBehaviour:
   Workers: {fileID: 1100161868}
   Destination: {fileID: 1692446275}
   Building: {fileID: 1692446277}
-  DisplayName: Recepcia
   MoveButton: {fileID: 910652916}
   MoveButtonText: {fileID: 655571821}
-  UpgradeButton: {fileID: 1778705096}
 --- !u!114 &1407953473
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13190,10 +13189,8 @@ MonoBehaviour:
   Workers: {fileID: 1100161868}
   Destination: {fileID: 1382926579}
   Building: {fileID: 1382926581}
-  DisplayName: "Pl\xE1\u017Eov\xFD bar"
   MoveButton: {fileID: 1010375125}
   MoveButtonText: {fileID: 1323043593}
-  UpgradeButton: {fileID: 564073674}
 --- !u!114 &2128371462
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14456,3 +14453,54 @@ SceneRoots:
   - {fileID: 1556051204}
   - {fileID: 100951809}
   - {fileID: 47487724}
+--- !u!114 &7400000101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1133894050}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6cd130d7354642e099e761ebef7d7f78, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.UI.BuildingUpgradeButton
+  Windows: {fileID: 1556051205}
+  Destination: {fileID: 1692446275}
+  Building: {fileID: 1692446277}
+  DisplayName: Recepcia
+  UpgradeButton: {fileID: 1778705096}
+--- !u!114 &7400000102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 573151085}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6cd130d7354642e099e761ebef7d7f78, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.UI.BuildingUpgradeButton
+  Windows: {fileID: 1556051205}
+  Destination: {fileID: 1936262263}
+  Building: {fileID: 1936262265}
+  DisplayName: "Re\u0161taur\xE1cia"
+  UpgradeButton: {fileID: 302670620}
+--- !u!114 &7400000103
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 460856414}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6cd130d7354642e099e761ebef7d7f78, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.UI.BuildingUpgradeButton
+  Windows: {fileID: 1556051205}
+  Destination: {fileID: 1382926579}
+  Building: {fileID: 1382926581}
+  DisplayName: "Pl\xE1\u017Eov\xFD bar"
+  UpgradeButton: {fileID: 564073674}

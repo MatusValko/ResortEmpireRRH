@@ -15,13 +15,9 @@ namespace ResortEmpire.UI
 
         [SerializeField] private ServiceBuildingBehaviour Building;
 
-        [SerializeField] private string DisplayName;
-
         [SerializeField] private UnityEngine.UI.Button MoveButton;
 
         [SerializeField] private TMPro.TMP_Text MoveButtonText;
-
-        [SerializeField] private UnityEngine.UI.Button UpgradeButton;
 
 
         private bool _initialized;
@@ -37,7 +33,7 @@ namespace ResortEmpire.UI
         private void Start()
         {
             if (Windows == null || Workers == null || Destination == null || Building == null
-                || MoveButton == null || MoveButtonText == null || UpgradeButton == null)
+                || MoveButton == null || MoveButtonText == null)
             {
                 Debug.LogError($"{nameof(BuildingControls)} on '{name}': Assign building, systems and button references.", this);
                 enabled = false;
@@ -63,19 +59,12 @@ namespace ResortEmpire.UI
                 MoveButton.onClick.RemoveListener(OnMoveClicked);
                 MoveButton.interactable = false;
             }
-
-            if (UpgradeButton != null)
-            {
-                UpgradeButton.onClick.RemoveListener(OnUpgradeClicked);
-                UpgradeButton.interactable = false;
-            }
         }
 
 
         private void Subscribe()
         {
             MoveButton.onClick.AddListener(OnMoveClicked);
-            UpgradeButton.onClick.AddListener(OnUpgradeClicked);
             RefreshButtons();
         }
 
@@ -91,10 +80,6 @@ namespace ResortEmpire.UI
             string text = selectingTarget ? "Presunúť sem" : "Presunúť pracovníka";
             if (MoveButtonText.text != text)
                 MoveButtonText.text = text;
-
-            bool canUpgrade = Windows.CanOpenPreviews && Destination.IsAvailable && Building.Building != null;
-            UpgradeButton.gameObject.SetActive(canUpgrade);
-            UpgradeButton.interactable = canUpgrade;
         }
 
 
@@ -108,13 +93,6 @@ namespace ResortEmpire.UI
                 Workers.ChooseWorker(Building.assignedWorker);
             else
                 Workers.TryAssignWorker(Building, Workers.chosenWorker);
-        }
-
-
-        private void OnUpgradeClicked()
-        {
-            if (Destination.IsAvailable && Building.Building != null)
-                Windows.ShowUpgrade(Building.Building, DisplayName);
         }
     }
 }
