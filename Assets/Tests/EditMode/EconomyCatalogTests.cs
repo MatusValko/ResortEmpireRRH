@@ -103,6 +103,45 @@ namespace ResortEmpire.Tests
 
 
         [Test]
+        public void DefaultEnergyBoostHalvesServiceTime()
+        {
+            Assert.That(_catalog.StartingEnergyBalance, Is.Zero);
+            Assert.That(_catalog.EnergyBoostCost, Is.EqualTo(3));
+            Assert.That(_catalog.EnergyBoostDuration, Is.EqualTo(15f));
+            Assert.That(_catalog.EnergyBoostSpeedMultiplier, Is.EqualTo(2f).Within(0.0001f));
+            Assert.That(_catalog.EnergyBoostQueueThreshold, Is.EqualTo(4));
+            Assert.That(_catalog.AdEnergy, Is.EqualTo(3));
+        }
+
+
+        [TestCase("StartingEnergy", -1)]
+        [TestCase("BoostCost", -1)]
+        [TestCase("BoostQueueThreshold", -1)]
+        [TestCase("AdEnergyReward", 0)]
+        public void InvalidEnergyAmountsAreInvalid(string field, int value)
+        {
+            SerializedObject serialized = new(_catalog);
+            serialized.FindProperty(field).intValue = value;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.That(_catalog.TryValidate(out _), Is.False);
+        }
+
+
+        [TestCase("BoostDurationSeconds", 0f)]
+        [TestCase("BoostServiceTimeReduction", 1f)]
+        [TestCase("BoostServiceTimeReduction", 0f)]
+        public void InvalidEnergyBoostTimingIsInvalid(string field, float value)
+        {
+            SerializedObject serialized = new(_catalog);
+            serialized.FindProperty(field).floatValue = value;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.That(_catalog.TryValidate(out _), Is.False);
+        }
+
+
+        [Test]
         public void DefaultCatalogPaysForEveryService()
         {
             foreach (ServiceType service in Enum.GetValues(typeof(ServiceType)))
