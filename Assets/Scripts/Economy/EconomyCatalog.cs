@@ -14,6 +14,23 @@ namespace ResortEmpire.Economy
         [Tooltip("Energy for 1, 2, 3, 4, 5 stars and Perfect, in that order.")]
         [SerializeField] private int[] EnergyByRating = { 0, 1, 2, 3, 5, 5 };
 
+        [Tooltip("Energy the player has before the first wave.")]
+        [SerializeField, Min(0)] private int StartingEnergy;
+
+        [Tooltip("Energy spent on one building boost.")]
+        [SerializeField, Min(0)] private int BoostCost = 3;
+
+        [SerializeField, Min(0.1f)] private float BoostDurationSeconds = 15f;
+
+        [Tooltip("Share of the service time removed while a boost runs. 0.5 halves it.")]
+        [SerializeField, Range(0.05f, 0.9f)] private float BoostServiceTimeReduction = 0.5f;
+
+        [Tooltip("A boost is offered once more guests than this wait in the building's queue.")]
+        [SerializeField, Min(0)] private int BoostQueueThreshold = 4;
+
+        [Tooltip("Energy granted for watching a rewarded ad.")]
+        [SerializeField, Min(1)] private int AdEnergyReward = 3;
+
         [Tooltip("Prototype tuning: 1-5 stars grant 1-5 times this amount; Perfect grants 6 times.")]
         [SerializeField, Min(0)] private int ResortValuePerRating = 10;
 
@@ -40,6 +57,19 @@ namespace ResortEmpire.Economy
 
 
         public long StartingBalance => StartingCoins;
+
+        public long StartingEnergyBalance => StartingEnergy;
+
+        public int EnergyBoostCost => BoostCost;
+
+        public float EnergyBoostDuration => BoostDurationSeconds;
+
+        // Service runs this many times faster while boosted: halving the service time doubles the speed
+        public float EnergyBoostSpeedMultiplier => 1f / (1f - BoostServiceTimeReduction);
+
+        public int EnergyBoostQueueThreshold => BoostQueueThreshold;
+
+        public int AdEnergy => AdEnergyReward;
 
         public int GetEnergyReward(WaveRating rating)
         {
@@ -111,6 +141,27 @@ namespace ResortEmpire.Economy
 
                     return false;
                 }
+            }
+
+            if (StartingEnergy < 0 || BoostCost < 0 || BoostQueueThreshold < 0 || AdEnergyReward < 1)
+            {
+                error = "Energy amounts must not be negative, and an ad must grant at least 1 energy.";
+
+                return false;
+            }
+
+            if (float.IsNaN(BoostDurationSeconds) || float.IsInfinity(BoostDurationSeconds) || BoostDurationSeconds <= 0f)
+            {
+                error = "Energy boost duration must be finite and greater than zero.";
+
+                return false;
+            }
+
+            if (float.IsNaN(BoostServiceTimeReduction) || BoostServiceTimeReduction <= 0f || BoostServiceTimeReduction >= 1f)
+            {
+                error = "Energy boost must remove more than 0 and less than 100 % of the service time.";
+
+                return false;
             }
 
             if (ResortValuePerRating < 0)

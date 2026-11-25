@@ -53,7 +53,7 @@ namespace ResortEmpire.Economy
             }
 
             Wallet = new CoinWallet(Catalog.StartingBalance);
-            Energy = new CoinWallet(0);
+            Energy = new CoinWallet(Catalog.StartingEnergyBalance);
             Earnings = new WaveEarnings(Catalog);
         }
 

@@ -29,6 +29,9 @@ namespace ResortEmpire.UI
 
         [SerializeField] private TMPro.TMP_Text BuildingText;
 
+        [Tooltip("Queue label above the building (\"Rad: 10\", missing worker).")]
+        [SerializeField] private bool ShowQueueLabel;
+
         [SerializeField] private Vector3 BuildingLabelOffset = new(0f, 2.2f, 0f);
 
         [SerializeField] private RectTransform OccupancyBadge;
@@ -116,7 +119,7 @@ namespace ResortEmpire.UI
                 _warning = warning;
             }
 
-            UpdateLabelPosition(BuildingLabel, _wave.State == WaveState.WaveActive && waiting > 0 && Building.gameObject.activeInHierarchy,
+            UpdateLabelPosition(BuildingLabel, ShowQueueLabel && _wave.State == WaveState.WaveActive && waiting > 0 && Building.gameObject.activeInHierarchy,
                 Destination.transform.position + BuildingLabelOffset);
         }
 

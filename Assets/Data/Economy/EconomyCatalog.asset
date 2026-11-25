@@ -14,6 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: ResortEmpire.Runtime::ResortEmpire.Economy.EconomyCatalog
   StartingCoins: 0
   EnergyByRating: 000000000100000002000000030000000500000005000000i
+  StartingEnergy: 6
+  BoostCost: 3
+  BoostDurationSeconds: 15
+  BoostServiceTimeReduction: 0.5
+  BoostQueueThreshold: 4
+  AdEnergyReward: 3
   ResortValuePerRating: 10
   Rewards:
   - Service: 0

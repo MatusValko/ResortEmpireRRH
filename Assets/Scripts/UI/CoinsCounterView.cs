@@ -63,7 +63,7 @@ namespace ResortEmpire.UI
             if (EnergyText != null && _energy != Economy.Energy.Balance)
             {
                 _energy = Economy.Energy.Balance;
-                EnergyText.text = $"Energy: {_energy.ToString("N0", CultureInfo.InvariantCulture)}";
+                EnergyText.SetText(_energy.ToString("N0", CultureInfo.InvariantCulture));
             }
 
             if (ResortValueText != null && _resortValue != Economy.ResortValue)
