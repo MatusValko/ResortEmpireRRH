@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
+using ResortEmpire.Buildings;
 using ResortEmpire.Requests;
 using ResortEmpire.Services;
 using UnityEngine;
@@ -17,39 +18,39 @@ namespace ResortEmpire.Waves
         {
             [SerializeField] private ServiceDestination Destination;
             [SerializeField] private Transform[] Waypoints;
+            [SerializeField] private Transform QueueLine;
+            [SerializeField] private Transform ServicePoint;
 
-            private readonly Queue<CustomerWalk> _waiting = new();
-            private readonly Queue<long> _earlyRequests = new();
             private readonly List<CustomerWalk> _customers = new();
+            private BuildingQueue _queue;
 
             public ServiceType Service => Destination.Service;
-            public Transform[] Path => Waypoints;
             public IReadOnlyList<CustomerWalk> Customers => _customers;
             public bool IsConfigured => Destination != null && Waypoints is { Length: > 0 }
-                && Array.TrueForAll(Waypoints, point => point != null);
+                && Array.TrueForAll(Waypoints, point => point != null)
+                && QueueLine != null && QueueLine.childCount > 0 && ServicePoint != null
+                && Destination.GetComponent<ServiceBuildingBehaviour>()?.Building != null;
 
-            public void Add(CustomerWalk customer)
+            public void RegisterQueue(RequestQueues queues)
             {
-                _customers.Add(customer);
-                if (_earlyRequests.TryDequeue(out long requestId))
-                    customer.SendToBuilding(requestId);
-                else
-                    _waiting.Enqueue(customer);
+                Transform[] slots = new Transform[QueueLine.childCount];
+                for (int i = 0; i < slots.Length; i++)
+                    slots[i] = QueueLine.GetChild(i);
+
+                _queue = queues.RegisterBuilding(Destination, slots, ServicePoint);
             }
 
-            public void SendNext(long requestId)
+            public void Assign(CustomerWalk customer, RequestArrival request)
             {
-                if (_waiting.TryDequeue(out CustomerWalk customer))
-                    customer.SendToBuilding(requestId);
-                else
-                    _earlyRequests.Enqueue(requestId);
+                _customers.Add(customer);
+                customer.SendToBuilding(request.Id, Waypoints, _queue);
+                _queue.Add(request, customer);
             }
 
             public void Clear()
             {
-                _waiting.Clear();
-                _earlyRequests.Clear();
                 _customers.Clear();
+                _queue.Clear();
             }
         }
 
@@ -82,9 +83,13 @@ namespace ResortEmpire.Waves
         private static readonly Quaternion DockRotation = Quaternion.Euler(0f, -34f, 0f);
 
         private readonly Dictionary<ServiceType, Route> _routes = new();
+        private readonly Queue<CustomerWalk> _readyCustomers = new();
+        private readonly Queue<RequestArrival> _waitingRequests = new();
         private WaveController _wave;
         private RequestArrivals _arrivals;
         private Transform _customers;
+        private int _ashore;
+        private int _assigned;
 
 
         internal (int Aboard, int Ashore, int Walking, int AtBuilding) GetCustomerLocations(ServiceType service)
@@ -93,32 +98,24 @@ namespace ResortEmpire.Waves
                 || !_routes.TryGetValue(service, out Route route))
                 return default;
 
-            int aboard = _arrivals.GetPlannedCount(service);
-            int ashore = 0;
             int walking = 0;
             int atBuilding = 0;
             foreach (CustomerWalk customer in route.Customers)
             {
-                if (!customer.IsAshore)
-                    continue;
-
-                aboard--;
-                if (!customer.IsHeadingToBuilding)
-                    ashore++;
-                else if (!customer.IsAtBuilding)
+                if (!customer.IsAtBuilding && !customer.WaitingSinceSeconds.HasValue)
                     walking++;
-                else if (!Requests.Queues.TryGetServiceRecord(customer.RequestId, out RequestServiceRecord record)
-                    || !record.IsCompleted)
+                else if (customer.IsAtBuilding && (!Requests.Queues.TryGetServiceRecord(customer.RequestId, out RequestServiceRecord record)
+                    || !record.IsCompleted))
                     atBuilding++;
             }
 
-            return (aboard, ashore, walking, atBuilding);
+            return ((int)_arrivals.TotalPlanned - _ashore, _ashore - _assigned, walking, atBuilding);
         }
 
 
         private void Start()
         {
-            if (Waves == null || Waves.Controller == null || Requests == null || Requests.Arrivals == null
+            if (Waves == null || Waves.Controller == null || Requests == null || Requests.Arrivals == null || Requests.Queues == null
                 || Ship == null || transform.IsChildOf(Ship) || ShipExit == null || Shore == null
                 || StagingArea == null || CustomerPrefab == null || Routes == null || Routes.Length == 0
                 || !(ShipSpeed > 0f) || !(UnloadingInterval > 0f))
@@ -131,10 +128,13 @@ namespace ResortEmpire.Waves
             {
                 if (route == null || !route.IsConfigured || !_routes.TryAdd(route.Service, route))
                 {
-                    DisableWithError("Assign one configured route per service.");
+                    DisableWithError("Assign one route, queue line and service point per configured service.");
                     return;
                 }
             }
+
+            foreach (Route route in Routes)
+                route.RegisterQueue(Requests.Queues);
 
             _wave = Waves.Controller;
             _arrivals = Requests.Arrivals;
@@ -143,14 +143,8 @@ namespace ResortEmpire.Waves
         }
 
 
-        private void OnEnable()
-        {
-            if (_wave != null)
-                Subscribe();
-        }
-
-
-        private void OnDisable()
+        // Keep the wave's guests and subscriptions alive if this component is temporarily disabled.
+        private void OnDestroy()
         {
             if (_wave == null)
                 return;
@@ -179,8 +173,35 @@ namespace ResortEmpire.Waves
 
         private void OnRequestCreated(RequestArrival request)
         {
-            if (_customers != null && _routes.TryGetValue(request.Service, out Route route))
-                route.SendNext(request.Id);
+            if (_customers == null || !_routes.ContainsKey(request.Service))
+                return;
+
+            _waitingRequests.Enqueue(request);
+            AssignNextCustomer();
+        }
+
+
+        private void OnCustomerAshore()
+        {
+            _ashore++;
+        }
+
+
+        private void OnCustomerReady(CustomerWalk customer)
+        {
+            _readyCustomers.Enqueue(customer);
+            AssignNextCustomer();
+        }
+
+
+        private void AssignNextCustomer()
+        {
+            if (!_readyCustomers.TryPeek(out CustomerWalk customer) || !_waitingRequests.TryDequeue(out RequestArrival request))
+                return;
+
+            _readyCustomers.Dequeue();
+            _routes[request.Service].Assign(customer, request);
+            _assigned++;
         }
 
 
@@ -189,41 +210,23 @@ namespace ResortEmpire.Waves
             Ship.gameObject.SetActive(true);
             yield return SailTo(DockPosition, eastClearance: 6f);
 
-            int total = 0;
-            int[] remaining = new int[Routes.Length];
-            for (int i = 0; i < Routes.Length; i++)
-            {
-                remaining[i] = _arrivals.GetPlannedCount(Routes[i].Service);
-                total += remaining[i];
-            }
-
+            int total = (int)_arrivals.TotalPlanned;
             CustomerWalk lastCustomer = null;
             int columns = Mathf.CeilToInt(Mathf.Sqrt(total * 2f));
-            int spawned = 0;
-            while (spawned < total)
+            for (int spawned = 0; spawned < total; spawned++)
             {
-                for (int i = 0; i < Routes.Length; i++)
+                lastCustomer = Instantiate(CustomerPrefab, ShipExit.position, ShipExit.rotation, _customers);
+                lastCustomer.Begin(_wave, Shore.position, GetStagingPosition(spawned, columns), OnCustomerAshore, OnCustomerReady);
+
+                if (spawned + 1 == total)
+                    break;
+
+                float interval = 0f;
+                while (interval < UnloadingInterval)
                 {
-                    if (remaining[i] == 0)
-                        continue;
-
-                    Route route = Routes[i];
-                    lastCustomer = Instantiate(CustomerPrefab, ShipExit.position, ShipExit.rotation, _customers);
-                    lastCustomer.Begin(_wave, Shore.position, GetStagingPosition(spawned, columns), route.Path);
-                    route.Add(lastCustomer);
-                    remaining[i]--;
-                    spawned++;
-
-                    if (spawned < total)
-                    {
-                        float interval = 0f;
-                        while (interval < UnloadingInterval)
-                        {
-                            yield return null;
-                            if (_wave.State != WaveState.WavePaused)
-                                interval += Time.deltaTime;
-                        }
-                    }
+                    yield return null;
+                    if (_wave.State != WaveState.WavePaused)
+                        interval += Time.deltaTime;
                 }
             }
 
@@ -281,7 +284,11 @@ namespace ResortEmpire.Waves
                 _customers = null;
             }
 
-            foreach (Route route in Routes)
+            _readyCustomers.Clear();
+            _waitingRequests.Clear();
+            _ashore = 0;
+            _assigned = 0;
+            foreach (Route route in _routes.Values)
                 route.Clear();
         }
 

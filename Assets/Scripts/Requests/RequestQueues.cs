@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 using ResortEmpire.Services;
 using ResortEmpire.Waves;
+using UnityEngine;
 
 namespace ResortEmpire.Requests
 {
@@ -20,16 +21,34 @@ namespace ResortEmpire.Requests
 
         private readonly Dictionary<long, RequestServiceRecord> _serviced = new();
 
+        private readonly Dictionary<ServiceDestination, BuildingQueue> _buildingQueues = new();
+
+        private readonly HashSet<long> _incoming = new();
+
+        private long _logicalWaiting;
+
 
         public int WaveNumber { get; private set; }
 
-        public long TotalWaiting { get; private set; }
+        public long TotalWaiting
+        {
+            get
+            {
+                long count = _logicalWaiting;
+                foreach (BuildingQueue queue in _buildingQueues.Values)
+                    count += queue.GetWaitingCount();
+
+                return count;
+            }
+        }
 
         public long TotalInService { get; private set; }
 
         public long TotalCompleted { get; private set; }
 
-        public long TotalUnfinished => TotalWaiting + TotalInService;
+        public long TotalUnfinished => _logicalWaiting + _incoming.Count + TotalInService;
+
+        internal bool HasBuildingQueues => _buildingQueues.Count != 0;
 
         public event Action<RequestServiceRecord> RequestStarted;
 
@@ -75,7 +94,7 @@ namespace ResortEmpire.Requests
                 return false;
 
             queue.Enqueue(new QueuedRequest(request, now));
-            TotalWaiting++;
+            _logicalWaiting++;
             Dispatch(request.Service);
 
             return true;
@@ -84,7 +103,22 @@ namespace ResortEmpire.Requests
 
         public int GetWaitingCount(ServiceType service)
         {
-            return GetQueue(service).Count;
+            int count = GetQueue(service).Count;
+            foreach (BuildingQueue queue in _buildingQueues.Values)
+            {
+                if (queue.Destination.Service == service)
+                    count += queue.GetWaitingCount();
+            }
+
+            return count;
+        }
+
+
+        public int GetWaitingCount(ServiceDestination destination)
+        {
+            return _buildingQueues.TryGetValue(destination, out BuildingQueue queue)
+                ? queue.GetWaitingCount()
+                : GetQueue(destination.Service).Count;
         }
 
 
@@ -106,7 +140,62 @@ namespace ResortEmpire.Requests
 
         public bool TryPeekWaiting(ServiceType service, out QueuedRequest request)
         {
-            return GetQueue(service).TryPeek(out request);
+            bool found = GetQueue(service).TryPeek(out request);
+            foreach (BuildingQueue queue in _buildingQueues.Values)
+            {
+                if (queue.Destination.Service == service && queue.TryGetOldest(out QueuedRequest candidate)
+                    && (!found || candidate.WaitingSinceSeconds < request.WaitingSinceSeconds))
+                {
+                    found = true;
+                    request = candidate;
+                }
+            }
+
+            return found;
+        }
+
+
+        public bool TryPeekWaiting(ServiceDestination destination, out QueuedRequest request)
+        {
+            return _buildingQueues.TryGetValue(destination, out BuildingQueue queue)
+                ? queue.TryGetOldest(out request)
+                : GetQueue(destination.Service).TryPeek(out request);
+        }
+
+
+        internal BuildingQueue RegisterBuilding(ServiceDestination destination, Transform[] slots, Transform servicePoint)
+        {
+            BuildingQueue queue = new(destination, slots, servicePoint);
+            _buildingQueues.Add(destination, queue);
+            return queue;
+        }
+
+
+        internal bool TryTrackIncoming(RequestArrival request)
+        {
+            if (!IsActiveWave() || request.WaveNumber != WaveNumber || request.Id <= 0 || !_receivedIds.Add(request.Id))
+                return false;
+
+            return _incoming.Add(request.Id);
+        }
+
+
+        internal void DispatchBuildingQueues()
+        {
+            foreach (BuildingQueue queue in _buildingQueues.Values)
+            {
+                if (!IsActiveWave())
+                    return;
+
+                while (IsActiveWave() && queue.TryStartArrivedGuest(out QueuedRequest arrived, out double reservedAt))
+                {
+                    _incoming.Remove(arrived.Request.Id);
+                    RecordStarted(arrived, _wave.ElapsedSeconds, reservedAt);
+                }
+
+                if (IsActiveWave() && queue.TryGetReadyHead(out QueuedRequest head) && _incoming.Contains(head.Request.Id))
+                    queue.ReserveHead(head, _wave.ElapsedSeconds);
+            }
         }
 
 
@@ -126,12 +215,9 @@ namespace ResortEmpire.Requests
                         break;
 
                     queue.Dequeue();
-                    TotalWaiting--;
-                    RequestServiceRecord record = new(request, startedAt);
-                    _serviced.Add(request.Request.Id, record);
-                    TotalInService++;
+                    _logicalWaiting--;
                     delivered++;
-                    RequestStarted?.Invoke(record);
+                    RecordStarted(request, startedAt);
                 }
             }
             finally
@@ -140,6 +226,15 @@ namespace ResortEmpire.Requests
             }
 
             return delivered;
+        }
+
+
+        private void RecordStarted(QueuedRequest request, double startedAt, double? waitingEndedAt = null)
+        {
+            RequestServiceRecord record = new(request, startedAt, false, waitingEndedAt ?? startedAt);
+            _serviced.Add(request.Request.Id, record);
+            TotalInService++;
+            RequestStarted?.Invoke(record);
         }
 
 
@@ -166,7 +261,7 @@ namespace ResortEmpire.Requests
                 || record.IsCompleted || record.Queued.Request.Service != request.Service)
                 return false;
 
-            RequestServiceRecord completed = new(record.Queued, record.ServiceStartedSeconds, true);
+            RequestServiceRecord completed = new(record.Queued, record.ServiceStartedSeconds, true, record.WaitingEndedSeconds);
             _serviced[request.Id] = completed;
             TotalInService--;
             TotalCompleted++;

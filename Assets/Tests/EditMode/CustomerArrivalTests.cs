@@ -17,7 +17,7 @@ namespace ResortEmpire.Tests
 
 
         [Test]
-        public void EachRequestReleasesOneCustomerOfItsService_EvenBeforeDisembarking()
+        public void RequestsAssignRoutesToReadyCustomersInOrder()
         {
             var host = new GameObject("Customer Arrivals");
             try
@@ -30,10 +30,27 @@ namespace ResortEmpire.Tests
                 var routes = (IDictionary)presentationType.GetField("_routes", PrivateInstance).GetValue(presentation);
                 routes.Add(ServiceType.Drinks, drinks);
                 routes.Add(ServiceType.Food, food);
+                var drinksPath = new[] { new GameObject("Drinks entrance").transform };
+                var foodPath = new[] { new GameObject("Food entrance").transform };
+                drinksPath[0].SetParent(host.transform);
+                foodPath[0].SetParent(host.transform);
+                var waypoints = routeType.GetField("Waypoints", PrivateInstance);
+                waypoints.SetValue(drinks, drinksPath);
+                waypoints.SetValue(food, foodPath);
+                var queueField = routeType.GetField("_queue", PrivateInstance);
+                void SetQueue(object route, Transform[] slots)
+                {
+                    var queue = Activator.CreateInstance(queueField.FieldType, PrivateInstance, null,
+                        new object[] { null, slots, slots[0] }, null);
+                    queueField.SetValue(route, queue);
+                }
+                SetQueue(drinks, drinksPath);
+                SetQueue(food, foodPath);
                 presentationType.GetField("_customers", PrivateInstance).SetValue(presentation, host.transform);
                 var send = presentationType.GetMethod("OnRequestCreated", PrivateInstance);
-                var add = routeType.GetMethod("Add");
+                var ready = presentationType.GetMethod("OnCustomerReady", PrivateInstance);
                 var requestId = typeof(CustomerWalk).GetProperty("RequestId", PrivateInstance);
+                var path = typeof(CustomerWalk).GetField("_path", PrivateInstance);
                 var requestConstructor = typeof(RequestArrival).GetConstructor(PrivateInstance, null,
                     new[] { typeof(long), typeof(int), typeof(ServiceType), typeof(double) }, null);
 
@@ -43,28 +60,34 @@ namespace ResortEmpire.Tests
                     send.Invoke(presentation, new[] { request });
                 }
 
-                CustomerWalk AddCustomer(object route)
+                CustomerWalk CreateCustomer()
                 {
                     var guest = new GameObject("Guest").AddComponent<CustomerWalk>();
                     guest.transform.SetParent(host.transform);
-                    add.Invoke(route, new object[] { guest });
                     return guest;
                 }
 
+                var first = CreateCustomer();
+                var second = CreateCustomer();
+                var third = CreateCustomer();
                 Send(ServiceType.Drinks, 1);
-                CustomerWalk firstDrinksGuest = AddCustomer(drinks);
-                CustomerWalk secondDrinksGuest = AddCustomer(drinks);
-                CustomerWalk foodGuest = AddCustomer(food);
-                Assert.That(requestId.GetValue(firstDrinksGuest), Is.EqualTo(1L));
-                Assert.That(requestId.GetValue(secondDrinksGuest), Is.EqualTo(0L));
-                Assert.That(requestId.GetValue(foodGuest), Is.EqualTo(0L));
+                Assert.That(requestId.GetValue(first), Is.EqualTo(0L));
+                Assert.That(path.GetValue(first), Is.Null);
+                ready.Invoke(presentation, new object[] { first });
+                Assert.That(requestId.GetValue(first), Is.EqualTo(1L));
+                Assert.That(path.GetValue(first), Is.SameAs(drinksPath));
 
+                ready.Invoke(presentation, new object[] { second });
+                ready.Invoke(presentation, new object[] { third });
+                Assert.That(requestId.GetValue(second), Is.EqualTo(0L));
                 Send(ServiceType.Food, 2);
-                Assert.That(requestId.GetValue(foodGuest), Is.EqualTo(2L));
-                Assert.That(requestId.GetValue(secondDrinksGuest), Is.EqualTo(0L));
+                Assert.That(requestId.GetValue(second), Is.EqualTo(2L));
+                Assert.That(path.GetValue(second), Is.SameAs(foodPath));
+                Assert.That(requestId.GetValue(third), Is.EqualTo(0L));
 
                 Send(ServiceType.Drinks, 3);
-                Assert.That(requestId.GetValue(secondDrinksGuest), Is.EqualTo(3L));
+                Assert.That(requestId.GetValue(third), Is.EqualTo(3L));
+                Assert.That(path.GetValue(third), Is.SameAs(drinksPath));
             }
             finally
             {

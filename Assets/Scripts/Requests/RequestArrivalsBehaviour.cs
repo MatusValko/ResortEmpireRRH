@@ -84,6 +84,7 @@ namespace ResortEmpire.Requests
             }
 
             Arrivals.Tick();
+            Queues.DispatchBuildingQueues();
 
             if (_wave.State == WaveState.WaveActive)
                 _wave.TryReportProgress(new WaveProgress(_wave.CurrentWaveNumber, Arrivals.ArrivalsComplete, Queues.TotalUnfinished));
@@ -128,8 +129,9 @@ namespace ResortEmpire.Requests
 
         private void OnRequestCreated(RequestArrival request)
         {
-            if (!Queues.TryEnqueue(request))
-                throw new InvalidOperationException("The generated request could not enter its service queue.");
+            bool accepted = Queues.HasBuildingQueues ? Queues.TryTrackIncoming(request) : Queues.TryEnqueue(request);
+            if (!accepted)
+                throw new InvalidOperationException("The generated request could not be tracked.");
         }
 
 

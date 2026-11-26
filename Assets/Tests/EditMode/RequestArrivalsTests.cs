@@ -81,15 +81,21 @@ namespace ResortEmpire.Tests
         [Test]
         public void GraduallyGeneratesExactCountsAndClosesOnlyAtDuration()
         {
+            Queue<int> draws = new(new[] { 1, 0, 1, 0, 0, 0 });
+            List<int> eligibleCounts = new();
+            CreateArrivals(count =>
+            {
+                eligibleCounts.Add(count);
+                return draws.Dequeue();
+            });
             StartWave();
-            Step(22.5f);
-            Assert.That(_arrivals.GetGeneratedCount(ServiceType.Rooms), Is.EqualTo(1));
-            Assert.That(_arrivals.GetGeneratedCount(ServiceType.Food), Is.Zero);
-            Step(22.5f);
-            Assert.That(_arrivals.GetGeneratedCount(ServiceType.Rooms), Is.EqualTo(2));
+            Step(14f);
+            Assert.That(_created, Is.Empty);
+            Step(1f);
+            Assert.That(_arrivals.GetGeneratedCount(ServiceType.Rooms), Is.Zero);
             Assert.That(_arrivals.GetGeneratedCount(ServiceType.Food), Is.EqualTo(1));
-            Step(44f);
-            Assert.That(_arrivals.TotalGenerated, Is.EqualTo(4));
+            Step(74f);
+            Assert.That(_arrivals.TotalGenerated, Is.EqualTo(5));
             Assert.That(_arrivals.ArrivalsComplete, Is.False);
             Step(1f);
 
@@ -99,7 +105,12 @@ namespace ResortEmpire.Tests
             Assert.That(_arrivals.TotalPlanned, Is.EqualTo(6));
             Assert.That(_arrivals.ArrivalsComplete, Is.True);
             Assert.That(_finished, Is.EqualTo(1));
-            Assert.That(_created.Select(request => request.ScheduledTimeSeconds), Is.EqualTo(new[] { 22.5d, 45d, 45d, 67.5d, 90d, 90d }));
+            Assert.That(_created.Select(request => request.ScheduledTimeSeconds), Is.EqualTo(new[] { 15d, 30d, 45d, 60d, 75d, 90d }));
+            Assert.That(eligibleCounts, Is.EqualTo(new[] { 2, 2, 2, 1, 1, 1 }));
+            Assert.That(_created.Select(request => request.Service), Is.EqualTo(new[]
+            {
+                ServiceType.Food, ServiceType.Rooms, ServiceType.Food, ServiceType.Rooms, ServiceType.Rooms, ServiceType.Rooms
+            }));
         }
 
 
@@ -342,10 +353,10 @@ namespace ResortEmpire.Tests
         }
 
 
-        private void CreateArrivals()
+        private void CreateArrivals(Func<int, int> chooseIndex = null)
         {
             _wave = new WaveController(_catalog);
-            _arrivals = new RequestArrivals(_wave, _available.Contains);
+            _arrivals = new RequestArrivals(_wave, _available.Contains, chooseIndex);
             _arrivals.RequestCreated += _created.Add;
             _arrivals.ArrivalsFinished += () => _finished++;
         }

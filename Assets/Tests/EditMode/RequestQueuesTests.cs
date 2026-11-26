@@ -59,7 +59,10 @@ namespace ResortEmpire.Tests
             _onTryAccept = null;
             _throwBeforeAccept = false;
             _queues = new RequestQueues(_wave, TryDeliver);
-            _arrivals = new RequestArrivals(_wave, _ => true);
+            // Put one Rooms request in each two-request interval so queue timing is deterministic.
+            int[] draws = { 0, 1, 0, 1, 1, 0 };
+            int draw = 0;
+            _arrivals = new RequestArrivals(_wave, _ => true, _ => draws[draw++ % draws.Length]);
             _arrivals.RequestCreated += _requests.Add;
             _wave.TryStartWave();
             Assert.That(_queues.TryBeginWave(), Is.True);
@@ -619,7 +622,7 @@ namespace ResortEmpire.Tests
                 destination.CapacityAvailable += service => queues.Dispatch(service);
                 destination.SetUnlocked(false);
                 _places[ServiceType.Rooms] = 1;
-                _wave.AdvanceTime(30f);
+                _wave.AdvanceTime(15f);
                 _arrivals.Tick();
                 destination.NotifyCapacityAvailable();
                 Assert.That(_delivered, Is.Empty);

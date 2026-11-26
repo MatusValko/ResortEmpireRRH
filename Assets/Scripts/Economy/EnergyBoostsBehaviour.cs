@@ -134,7 +134,7 @@ namespace ResortEmpire.Economy
         {
             RequestQueues queues = Requests.Queues;
 
-            return queues.WaveNumber == _wave.CurrentWaveNumber ? queues.GetWaitingCount(building.Building.ServedService) : 0;
+            return queues.WaveNumber == _wave.CurrentWaveNumber ? queues.GetWaitingCount(building.Destination) : 0;
         }
 
 

@@ -63,7 +63,7 @@ namespace ResortEmpire.UI
             if (Waves == null || Waves.Controller == null || Requests == null
                 || Requests.Arrivals == null || Requests.Queues == null || Destination == null
                 || RatingCatalog == null || !RatingCatalog.TryValidate(out _)
-                || Building == null || ResortCamera == null || CountsText == null
+                || Building == null || ResortCamera == null
                 || BuildingLabel == null || BuildingText == null)
             {
                 DisableWithError("Assign initialized Waves and Requests, a valid rating catalog, building references, camera and UI labels.");
@@ -96,11 +96,11 @@ namespace ResortEmpire.UI
             bool currentQueue = Requests.Queues.WaveNumber == _wave.CurrentWaveNumber;
             int completed = currentQueue ? Requests.Queues.GetCompletedCount(service) : 0;
             var locations = Customers != null ? Customers.GetCustomerLocations(service) : default;
-            if (planned != _planned || completed != _completed || locations != _locations)
+            if (CountsText != null && (planned != _planned || completed != _completed || locations != _locations))
             {
                 CountsText.text = Customers == null
                     ? $"Požadované: {planned}\nVybavené: {completed}"
-                    : $"Plán: {planned} · Hotovo: {completed}\nLoď: {locations.Aboard} · Breh: {locations.Ashore}\nCesta: {locations.Walking} · Budova: {locations.AtBuilding}";
+                    : $"Plán: {planned} · Hotovo: {completed}\nLoď spolu: {locations.Aboard} · Bez cieľa: {locations.Ashore}\nCesta: {locations.Walking} · Budova: {locations.AtBuilding}";
                 _planned = planned;
                 _completed = completed;
                 _locations = locations;
@@ -108,8 +108,8 @@ namespace ResortEmpire.UI
 
             UpdateOccupancy();
 
-            int waiting = currentQueue ? Requests.Queues.GetWaitingCount(service) : 0;
-            string warning = GetWarning(currentQueue, Building.HasWorker, service);
+            int waiting = currentQueue ? Requests.Queues.GetWaitingCount(Destination) : 0;
+            string warning = GetWarning(currentQueue, Building.HasWorker);
             if (waiting != _waiting || warning != _warning)
             {
                 BuildingText.text = $"Rad: {waiting}";
@@ -142,10 +142,10 @@ namespace ResortEmpire.UI
             bool show = service != null && Destination.IsAvailable;
             if (show)
             {
-                var occupancy = (service.InServiceCount, service.TotalSeats);
+                var occupancy = (Occupied: service.TotalSeats - service.FreeSeats, Total: service.TotalSeats);
                 if (occupancy != _occupancy)
                 {
-                    OccupancyText.text = $"{occupancy.InServiceCount}/{occupancy.TotalSeats}";
+                    OccupancyText.text = $"{occupancy.Occupied}/{occupancy.Total}";
                     _occupancy = occupancy;
                 }
             }
@@ -154,10 +154,10 @@ namespace ResortEmpire.UI
         }
 
 
-        private string GetWarning(bool currentQueue, bool hasWorker, ServiceType service)
+        private string GetWarning(bool currentQueue, bool hasWorker)
         {
             if (_wave.State != WaveState.WaveActive || !currentQueue
-                || !Requests.Queues.TryPeekWaiting(service, out QueuedRequest oldest))
+                || !Requests.Queues.TryPeekWaiting(Destination, out QueuedRequest oldest))
                 return string.Empty;
 
             if (!hasWorker)

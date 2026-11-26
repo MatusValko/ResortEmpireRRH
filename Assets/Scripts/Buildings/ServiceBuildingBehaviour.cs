@@ -41,6 +41,8 @@ namespace ResortEmpire.Buildings
         // Null when the simulation is not configured on this object
         public ServiceBuilding Building { get; private set; }
 
+        internal ServiceDestination Destination => _destination;
+
 
         public void ResetWorkerAssignment()
         {

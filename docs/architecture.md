@@ -38,10 +38,16 @@ počty otvorených služieb a čas príchodu z aktuálnej konfigurácie; zmeny p
 vlny ovplyvnia až ďalší štart. Pripojenie uprostred rozbehnutej vlny sa odmietne.
 
 `Tick()` používa iba `IWaveContext.ElapsedSeconds`, nemá druhý časovač.
-Pre N požiadaviek služby sú termíny D/N, 2D/N, …, D, kde D je čas z konfigurácie
-(predvolene 90 s). Pri dlhšom kroku spracuje všetky splatné príchody v poradí
-ich termínov; rovnaký termín rozhodne poradie `ServiceType`. Opakované volanie
-nevytvára duplikáty. Počas pauzy príchody stoja.
+Pre N požiadaviek celej vlny sú termíny D/N, 2D/N, …, D, kde D je čas z konfigurácie
+(predvolene 90 s). Pri každom príchode generátor náhodne vyberie z otvorených
+služieb so zostávajúcou kvótou. Každá z nich má rovnakú šancu a po vyčerpaní kvóty
+sa z výberu vyradí. Pri dlhšom kroku spracuje všetky splatné príchody v poradí.
+Opakované volanie nevytvára duplikáty. Počas pauzy príchody stoja.
+
+Hostia vystúpia z lode a prídu na zhromaždisko bez pridelenej budovy.
+`CustomerArrivalBehaviour` pridelí najstaršiu čakajúcu požiadavku prvému pripravenému
+hosťovi a pošle ho po trase danej služby. Požiadavka vytvorená pred príchodom hostí
+čaká na zhromaždisku do najbližšieho priradenia.
 
 - `RequestCreated(RequestArrival)` oznámi každú požiadavku: `Id`, `WaveNumber`,
   `Service` a `ScheduledTimeSeconds`. ID sa medzi vlnami jedného generátora neopakuje.
@@ -73,25 +79,23 @@ Pripojený rad preto uloží požiadavku pred prvým pokusom o odovzdanie budove
 
 ### Smerovanie a FIFO rady
 
-`RequestQueues` vlastní samostatný FIFO rad pre každý `ServiceType`. Dostane
-`IWaveContext` a funkciu `Func<ServiceType, QueuedRequest, bool>` pre odovzdanie
-budove; nepotrebuje poznať jej implementáciu ani počet miest.
+`RequestQueues` v hernej scéne vlastní jeden `BuildingQueue` pre každý
+`ServiceDestination`. Trasa určí konkrétnu budovu, označené pozície radu a
+bod obsluhy. Simulácia bez vizuálnych hostí používa logické FIFO rady podľa služby.
 
 - `TryBeginWave()` inicializuje rad pri štarte vlny. Nezahodí čakajúce ani práve
   obsluhované požiadavky predchádzajúcej vlny a nepripojí sa uprostred vlny.
-- `TryEnqueue(RequestArrival)` uloží požiadavku, odmietne duplikáty a cudziu vlnu
-  a skúsi odovzdať čelo radu. Staršie požiadavky majú prednosť.
-- `QueuedRequest.WaitingSinceSeconds` je herný čas prijatia do radu v rámci vlny,
-  nie plánovaný termín príchodu. Opakované pokusy ho nemenia; pauza čas neposúva.
-- `Dispatch(service)` odovzdáva požiadavky, kým ich príjemca prijíma. Požiadavka
-  sa odstráni iba po `true`; `false` ponechá čelo aj ostatné požiadavky v rade.
-- `TotalWaiting`, `GetWaitingCount(service)` a `TryPeekWaiting` poskytujú read-only
-  prehľad. Prijaté požiadavky už nie sú v tomto počte, ale ešte nie sú vybavené.
-
-`RequestArrivalsBehaviour` pripája `RequestCreated` k radom a smeruje podľa
-`ServiceDestination.Service`. Nový príchod, návrat z pauzy, opätovné zapnutie
-adaptéra alebo udalosť `CapacityAvailable` spustia pokus o odovzdanie.
-Kapacita sa nekontroluje každý snímok. Počas pauzy sa nič neodovzdáva.
+- `RequestCreated` pridá požiadavku medzi nevyriešené. Po priradení hosťa
+  rezervuje jeho rad miesto na konci. Ak je všetkých osem pozícií rezervovaných,
+  hosť zostáva na zhromaždisku, kým sa neuvoľní miesto.
+- `QueuedRequest.WaitingSinceSeconds` je herný čas prvého obsadenia pozície v rade.
+  Posun v rade ho nemení; pauza čas neposúva.
+- Keď prvý hosť stojí na čele radu, `DispatchBuildingQueues()` mu môže rezervovať
+  voľné miesto. Hosť odíde k bodu obsluhy a rad sa posunie. Rezervácia drží miesto,
+  ale čas obsluhy začne plynúť až po príchode hosťa k bodu obsluhy.
+- `GetWaitingCount(destination)` a `TryPeekWaiting` čítajú počet a čas hostí,
+  ktorí už obsadili pozíciu. Hosť na ceste a hosť čakajúci na zhromaždisku
+  sa započítavajú do nevyriešených požiadaviek vlny.
 
 Buildings má implementovať `IRequestReceiver.TryAccept(QueuedRequest)`:
 vrátiť `true` až po prijatí a rezervovaní miesta, pri plnej budove `false`.
@@ -104,9 +108,9 @@ kontrakt a môže pri opakovaní vytvoriť duplicitnú obsluhu.
 ### Začiatok a dokončenie obsluhy
 
 Po potvrdenom prijatí sa v `RequestQueues` uloží nemenný `RequestServiceRecord`:
-`Queued`, `ServiceStartedSeconds`, `WaitingDurationSeconds` a `IsCompleted`.
-Čakanie je rozdiel herného času začiatku obsluhy a prijatia do radu; potom už
-nerastie. Okamžitý príjem má nulové čakanie, pauza sa do čakania nepripočíta.
+`Queued`, `ServiceStartedSeconds`, `WaitingEndedSeconds`, `WaitingDurationSeconds`
+a `IsCompleted`. Čakanie končí pri rezervovaní miesta, keď hosť opustí rad.
+Cesta k bodu obsluhy a pauza sa do čakania nepripočítajú.
 Rad nemá timeout a čakajúci zákazníci neodchádzajú.
 
 - `RequestStarted(record)` oznámi potvrdený začiatok obsluhy.
@@ -116,7 +120,7 @@ Rad nemá timeout a čakajúci zákazníci neodchádzajú.
 - `TryGetServiceRecord(id, out record)` vráti snapshot prijatej alebo dokončenej
   požiadavky. Dokončené záznamy zostávajú do štartu ďalšej vlny.
 - `TotalInService`, `TotalCompleted` a `TotalUnfinished` sú read-only počty.
-  `TotalUnfinished` zahŕňa čakajúcich aj obsluhovaných; prijatie ho neznižuje.
+  `TotalUnfinished` zahŕňa aj hostí na ceste a pred vstupom do radu; prijatie ho neznižuje.
 
 Buildings drží prijatý `QueuedRequest` a vykonáva vlastnú obsluhu. Po jej skončení
 zavolá `RequestArrivalsBehaviour.Queues.TryCompleteRequest(request.Request)`.

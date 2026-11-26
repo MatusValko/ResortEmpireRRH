@@ -13,6 +13,8 @@ namespace ResortEmpire.Requests
 
         private readonly Func<ServiceType, bool> _isAvailable;
 
+        private readonly Func<int, int> _chooseIndex;
+
         private readonly int[] _planned = new int[Services.Length];
 
         private readonly int[] _generated = new int[Services.Length];
@@ -40,10 +42,11 @@ namespace ResortEmpire.Requests
         public event Action ArrivalsFinished;
 
 
-        public RequestArrivals(IWaveContext wave, Func<ServiceType, bool> isAvailable)
+        public RequestArrivals(IWaveContext wave, Func<ServiceType, bool> isAvailable, Func<int, int> chooseIndex = null)
         {
             _wave = wave ?? throw new ArgumentNullException(nameof(wave));
             _isAvailable = isAvailable ?? throw new ArgumentNullException(nameof(isAvailable));
+            _chooseIndex = chooseIndex ?? new Random().Next;
         }
 
 
@@ -115,29 +118,16 @@ namespace ResortEmpire.Requests
             try
             {
                 double limit = Math.Min(elapsed, _duration);
-                while (IsActiveWave())
+                while (IsActiveWave() && TotalGenerated < TotalPlanned)
                 {
-                    int nextService = -1;
-                    double nextTime = double.PositiveInfinity;
-                    for (int i = 0; i < Services.Length; i++)
-                    {
-                        if (_generated[i] == _planned[i])
-                            continue;
-
-                        int next = _generated[i] + 1;
-                        double scheduled = next == _planned[i] ? _duration : _duration * next / _planned[i];
-                        if (scheduled <= limit && scheduled < nextTime)
-                        {
-                            nextService = i;
-                            nextTime = scheduled;
-                        }
-                    }
-
-                    if (nextService < 0)
+                    long next = TotalGenerated + 1;
+                    double nextTime = next == TotalPlanned ? _duration : _duration * next / TotalPlanned;
+                    if (nextTime > limit)
                         break;
 
+                    int nextService = ChooseService();
                     _generated[nextService]++;
-                    TotalGenerated++;
+                    TotalGenerated = next;
                     RequestCreated?.Invoke(new RequestArrival(++_lastRequestId, WaveNumber, Services[nextService], nextTime));
                 }
 
@@ -151,6 +141,21 @@ namespace ResortEmpire.Requests
             {
                 _isUpdating = false;
             }
+        }
+
+
+        private int ChooseService()
+        {
+            Span<int> eligible = stackalloc int[Services.Length];
+            int count = 0;
+            for (int i = 0; i < Services.Length; i++)
+            {
+                if (_generated[i] < _planned[i])
+                    eligible[count++] = i;
+            }
+
+            int choice = _chooseIndex(count);
+            return eligible.Slice(0, count)[choice];
         }
 
 

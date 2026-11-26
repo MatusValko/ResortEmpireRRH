@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 
 using NUnit.Framework;
 using ResortEmpire.Buildings;
@@ -100,6 +101,57 @@ namespace ResortEmpire.Tests
             finally
             {
                 UnityEngine.Object.DestroyImmediate(singleWaveCatalog);
+            }
+        }
+
+
+        [Test]
+        public void ReservedSeatDoesNotAdvanceUntilGuestArrives()
+        {
+            WaveCatalog catalog = CreateSingleWaveCatalog(arrivalDuration: 1f, rooms: 1);
+            try
+            {
+                WaveController wave = new(catalog);
+                RequestArrivals arrivals = new(wave, service => service == ServiceType.Rooms);
+                RequestQueues queues = new(wave, (_, _) => false);
+                arrivals.RequestCreated += request => queues.TryEnqueue(request);
+                Assert.That(wave.TryStartWave(), Is.True);
+                Assert.That(queues.TryBeginWave() && arrivals.TryBeginWave(), Is.True);
+                wave.AdvanceTime(1f);
+                arrivals.Tick();
+                Assert.That(queues.TryPeekWaiting(ServiceType.Rooms, out QueuedRequest request), Is.True);
+
+                BuildingDefinition definition = _buildingCatalog.GetBuilding(ServiceType.Rooms);
+                ServiceBuilding building = new(definition);
+                building.SetWorkerAssigned(true);
+                int completed = 0;
+                building.ServiceCompleted += (_, _) => completed++;
+                const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+                MethodInfo reserve = typeof(ServiceBuilding).GetMethod("TryReserveService", flags);
+                MethodInfo arrive = typeof(ServiceBuilding).GetMethod("TryStartReservedService", flags);
+
+                Assert.That(reserve.Invoke(building, new object[] { request }), Is.True);
+                Assert.That(building.FreeSeats, Is.EqualTo(building.TotalSeats - 1));
+                building.AdvanceTime(1000f);
+                Assert.That(building.ReservedCount, Is.EqualTo(1));
+                Assert.That(building.InServiceCount, Is.Zero);
+                Assert.That(completed, Is.Zero);
+
+                building.SetPaused(true);
+                Assert.That(arrive.Invoke(building, new object[] { request.Request.Id }), Is.False);
+                building.SetPaused(false);
+                Assert.That(arrive.Invoke(building, new object[] { request.Request.Id }), Is.True);
+                Assert.That(building.ReservedCount, Is.Zero);
+                Assert.That(building.FreeSeats, Is.EqualTo(building.TotalSeats - 1));
+                building.AdvanceTime(definition.ServiceTimeSeconds * 0.5f);
+                Assert.That(completed, Is.Zero);
+                building.AdvanceTime(definition.ServiceTimeSeconds * 0.5f);
+                Assert.That(completed, Is.EqualTo(1));
+                Assert.That(building.FreeSeats, Is.EqualTo(building.TotalSeats));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(catalog);
             }
         }
 

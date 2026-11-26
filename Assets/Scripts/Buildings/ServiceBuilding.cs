@@ -83,8 +83,10 @@ namespace ResortEmpire.Buildings
         // Requests being served right now, that is seats in use
         public int InServiceCount { get; private set; }
 
+        public int ReservedCount { get; private set; }
+
         // Seats available for the next request. Zero means the request keeps waiting
-        public int FreeSeats => TotalSeats - InServiceCount;
+        public int FreeSeats => TotalSeats - InServiceCount - ReservedCount;
 
         public float Utilization => _workerAssigned
             ? _definition.StaffedUtilizationFactor
@@ -96,22 +98,45 @@ namespace ResortEmpire.Buildings
 
         public bool TryStartService(QueuedRequest request)
         {
-            if (request.Request.Service != ServedService)
-                throw new ArgumentException($"{Name} does not serve {request.Request.Service}.", nameof(request));
+            ServiceSlot slot = FindFreeSlot(request);
+            if (slot == null)
+                return false;
 
-            if (!_unlocked || _paused || FreeSeats == 0)
+            slot.Occupy(request);
+            PublishServiceStarted(request);
+
+            return true;
+        }
+
+
+        internal bool TryReserveService(QueuedRequest request)
+        {
+            ServiceSlot slot = FindFreeSlot(request);
+            if (slot == null)
+                return false;
+
+            slot.Reserve(request);
+            ReservedCount++;
+            StateChanged?.Invoke(this);
+
+            return true;
+        }
+
+
+        internal bool TryStartReservedService(long requestId)
+        {
+            if (_paused || !_unlocked)
                 return false;
 
             for (int i = 0; i < TotalSeats; i++)
             {
-                if (!_slots[i].IsFree)
+                ServiceSlot slot = _slots[i];
+                if (!slot.IsReserved || slot.Request.Request.Id != requestId)
                     continue;
 
-                _slots[i].Occupy(request);
-                InServiceCount++;
-
-                ServiceStarted?.Invoke(this, request);
-                StateChanged?.Invoke(this);
+                slot.StartReserved();
+                ReservedCount--;
+                PublishServiceStarted(slot.Request);
 
                 return true;
             }
@@ -133,7 +158,7 @@ namespace ResortEmpire.Buildings
 
             for (int i = 0; i < TotalSeats; i++)
             {
-                if (_slots[i].IsFree)
+                if (_slots[i].IsFree || _slots[i].IsReserved)
                     continue;
 
                 _slots[i].Advance(progressPerSecond * deltaTime);
@@ -154,6 +179,32 @@ namespace ResortEmpire.Buildings
             foreach (QueuedRequest request in completed)
                 ServiceCompleted?.Invoke(this, request);
 
+            StateChanged?.Invoke(this);
+        }
+
+
+        private ServiceSlot FindFreeSlot(QueuedRequest request)
+        {
+            if (request.Request.Service != ServedService)
+                throw new ArgumentException($"{Name} does not serve {request.Request.Service}.", nameof(request));
+
+            if (!_unlocked || _paused || FreeSeats == 0)
+                return null;
+
+            for (int i = 0; i < TotalSeats; i++)
+            {
+                if (_slots[i].IsFree)
+                    return _slots[i];
+            }
+
+            return null;
+        }
+
+
+        private void PublishServiceStarted(QueuedRequest request)
+        {
+            InServiceCount++;
+            ServiceStarted?.Invoke(this, request);
             StateChanged?.Invoke(this);
         }
 

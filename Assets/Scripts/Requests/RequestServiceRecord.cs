@@ -6,15 +6,18 @@ namespace ResortEmpire.Requests
 
         public double ServiceStartedSeconds { get; }
 
-        public double WaitingDurationSeconds => ServiceStartedSeconds - Queued.WaitingSinceSeconds;
+        public double WaitingEndedSeconds { get; }
+
+        public double WaitingDurationSeconds => WaitingEndedSeconds - Queued.WaitingSinceSeconds;
 
         public bool IsCompleted { get; }
 
 
-        internal RequestServiceRecord(QueuedRequest queued, double serviceStartedSeconds, bool isCompleted = false)
+        internal RequestServiceRecord(QueuedRequest queued, double serviceStartedSeconds, bool isCompleted, double waitingEndedAt)
         {
             Queued = queued;
             ServiceStartedSeconds = serviceStartedSeconds;
+            WaitingEndedSeconds = waitingEndedAt;
             IsCompleted = isCompleted;
         }
     }

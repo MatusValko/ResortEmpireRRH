@@ -287,7 +287,8 @@ namespace ResortEmpire.Tests
                 BindingFlags.Instance | BindingFlags.NonPublic, null, new object[] { arrival, 0d }, null);
 
             return (RequestServiceRecord)Activator.CreateInstance(typeof(RequestServiceRecord),
-                BindingFlags.Instance | BindingFlags.NonPublic, null, new object[] { queued, waitingSeconds, completed }, null);
+                BindingFlags.Instance | BindingFlags.NonPublic, null,
+                new object[] { queued, waitingSeconds, completed, waitingSeconds }, null);
         }
 
 
