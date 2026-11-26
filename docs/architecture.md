@@ -15,10 +15,10 @@
 | Reception | Rooms | Od začiatku |
 | Restaurant | Food | Od začiatku |
 | Beach Bar | Drinks | Od začiatku |
-| Pool | Relax | Po Wave 3 a zakúpení |
-| Bungalows | OceanView | Po Wave 6 a zakúpení |
+| Pool | Relax | Od Wave 4 |
+| Bungalows | OceanView | Od Wave 7 |
 
-Požiadavky zamknutých služieb sa negenerujú, kým hráč príslušnú budovu nezakúpi.
+Požiadavky zamknutých služieb sa negenerujú. Po potvrdení výsledku vlny 3 alebo 6 sa budova otvorí automaticky a dostane jedného nového pracovníka.
 
 ### Priradenie služby budove
 
@@ -55,10 +55,9 @@ nevytvára duplikáty. Počas pauzy príchody stoja.
 `RequestArrivalsBehaviour` sa pripája k `WaveStarted` a volá `Tick` v `LateUpdate`,
 po aktualizácii času vĺn. Inicializuje sa v `Start` po všetkých `Awake`;
 `DefaultExecutionOrder(-100)` zabezpečí pripojenie pred bežnými `Start` s poradím 0.
-V scéne má explicitné referencie na kontrolér a tri `ServiceDestination`.
-`IsAvailable` vyžaduje odomknutý a aktívny zapnutý destination; Pool a Bungalows
-tu zatiaľ nemajú destination. Buildings nastavuje dostupnosť cez `SetUnlocked(bool)`;
-samotný nákup, podmienky odomknutia a rozširovanie rezortu nie sú implementované.
+V scéne má explicitné referencie na kontrolér a päť `ServiceDestination`.
+`IsAvailable` vyžaduje odomknutý a aktívny zapnutý destination.
+`BuildingUnlocksBehaviour` pri zmene vlny otvorí Pool alebo Bungalows a skryje označenie zámku.
 Prázdne destinations, chýbajúce referencie alebo zmeškaný štart znamenajú jasnú
 chybu a vypnutie adaptéra. Spustenie vlny patrí do `Start` po inicializácii adaptéra
 alebo do neskoršieho hráčskeho pokynu, nie do `Awake`.

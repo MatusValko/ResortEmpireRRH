@@ -73,11 +73,7 @@ public class WorkersManagers : MonoBehaviour
             int randomIndex = Random.Range(0, availableBuildings.Count);
             ServiceBuildingBehaviour selectedBuilding = availableBuildings[randomIndex];
 
-            selectedBuilding.HasWorker = true;
-            selectedBuilding.assignedWorker = worker;
-            worker.assignedBuilding = selectedBuilding;
-
-            worker.transform.position = selectedBuilding.workerPoint.position;
+            PlaceWorker(selectedBuilding, worker);
 
             availableBuildings.RemoveAt(randomIndex);
 
@@ -162,6 +158,35 @@ public class WorkersManagers : MonoBehaviour
     public void TryAssignWorker(ServiceBuildingBehaviour building, Worker worker)
     {
         AssignWorker(building, worker);
+    }
+
+    public bool TryOpenWithWorker(ServiceBuildingBehaviour building)
+    {
+        if (building == null || building.Building == null || building.Building.IsUnlocked)
+            return false;
+
+        if (!building.isActiveAndEnabled || building.workerPoint == null || WorkerPrefab == null || workers == null)
+        {
+            Debug.LogError($"Cannot open '{building.name}': assign its worker point and initialize the worker manager.", this);
+            return false;
+        }
+
+        Transform position = building.workerPoint;
+        Worker worker = Instantiate(WorkerPrefab, position.position, position.rotation, transform);
+        System.Array.Resize(ref workers, workers.Length + 1);
+        workers[workers.Length - 1] = worker.gameObject;
+        PlaceWorker(building, worker);
+        building.Building.Unlock();
+        return true;
+    }
+
+    private static void PlaceWorker(ServiceBuildingBehaviour building, Worker worker)
+    {
+        building.HasWorker = true;
+        building.assignedWorker = worker;
+        worker.assignedBuilding = building;
+        worker.transform.position = building.workerPoint.position;
+        building.Building?.SetWorkerAssigned(true);
     }
 
     public void AssignWorker(ServiceBuildingBehaviour building, Worker worker)

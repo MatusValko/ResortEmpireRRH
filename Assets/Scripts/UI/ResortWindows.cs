@@ -201,7 +201,7 @@ namespace ResortEmpire.UI
         private void ShowNewArea()
         {
             if (CanOpenPreviews)
-                ShowWindow("Nová oblasť", "Bazén: po 3. vlne a zakúpení.\n\nBungalovy: po 6. vlne a zakúpení.\n\nUkážka. Nákup a odomknutie zatiaľ nie sú pripojené.", WindowMode.Info);
+                ShowWindow("Nová oblasť", "Bazén sa otvorí po 3. vlne.\n\nBungalovy sa otvoria po 6. vlne.\n\nS každou novou budovou pribudne jeden pracovník.", WindowMode.Info);
         }
 
 
