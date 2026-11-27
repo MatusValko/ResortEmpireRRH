@@ -55,6 +55,8 @@ namespace ResortEmpire.UI
 
         private bool _restoreWorkerInput;
 
+        private ResortHud _hud;
+
 
         public bool CanOpenPreviews => isActiveAndEnabled && _wave != null && _wave.State == WaveState.AwaitingWave
             && !_wave.IsSequenceComplete && !ModalOverlay.activeSelf;
@@ -86,6 +88,12 @@ namespace ResortEmpire.UI
             }
 
             _wave = Waves.Controller;
+            LandscapeLayout layout = GetComponent<LandscapeLayout>();
+            if (layout != null && layout.isActiveAndEnabled)
+            {
+                EnergyBoostsBehaviour boosts = FindFirstObjectByType<EnergyBoostsBehaviour>();
+                _hud = new ResortHud(layout, this, _wave, Requests, Workers, Economy, boosts, WindowTitle.font);
+            }
             Subscribe();
         }
 
@@ -98,11 +106,13 @@ namespace ResortEmpire.UI
             ResultPreviewButton.gameObject.SetActive(CanOpenPreviews);
             AreaButton.gameObject.SetActive(CanOpenPreviews);
             UpdateWorkerInput();
+            _hud?.Refresh();
         }
 
 
         private void OnDisable()
         {
+            _hud?.SetEnabled(false);
             if (_wave != null)
             {
                 _wave.StateChanged -= OnStateChanged;
@@ -142,6 +152,12 @@ namespace ResortEmpire.UI
             if (!CanOpenPreviews || building == null || Economy.Wallet == null)
                 return;
 
+            if (_hud != null)
+            {
+                _hud.OpenBuilding(building);
+                return;
+            }
+
             _upgradeTarget = building;
             _upgradeName = displayName;
             ShowWindow("Vylepšenie budovy", GetUpgradeText(), WindowMode.Upgrade);
@@ -150,6 +166,7 @@ namespace ResortEmpire.UI
 
         private void Subscribe()
         {
+            _hud?.SetEnabled(true);
             ResultPreviewButton.onClick.AddListener(ShowResultPreview);
             AreaButton.onClick.AddListener(ShowNewArea);
             WindowButton.onClick.AddListener(OnWindowButtonClicked);
@@ -207,6 +224,7 @@ namespace ResortEmpire.UI
 
         private void ShowWindow(string title, string text, WindowMode mode)
         {
+            _hud?.CloseBuilding();
             _mode = mode;
             WindowTitle.text = title;
             WindowText.text = text;

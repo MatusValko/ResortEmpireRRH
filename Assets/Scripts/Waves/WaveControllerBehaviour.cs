@@ -7,6 +7,12 @@ namespace ResortEmpire.Waves
     {
         [SerializeField] private WaveCatalog Catalog;
 
+#if UNITY_EDITOR
+        [Header("Play Mode Testing")]
+        [Tooltip("First wave offered when starting Play Mode. Earlier waves are skipped.")]
+        [SerializeField, Range(1, WaveCatalog.RequiredWaveCount)] private int StartFromWave = 1;
+#endif
+
 
         private bool _pausedByApplication;
 
@@ -32,7 +38,11 @@ namespace ResortEmpire.Waves
                 return;
             }
 
+#if UNITY_EDITOR
+            Controller = new WaveController(Catalog, Mathf.Clamp(StartFromWave, 1, WaveCatalog.RequiredWaveCount));
+#else
             Controller = new WaveController(Catalog);
+#endif
         }
 
 

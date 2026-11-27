@@ -104,15 +104,73 @@ namespace ResortEmpire.Tests
 
 
         [Test]
-        public void MissingWorkerTakesPriorityWithoutRevealingSatisfaction()
+        public void LongWaitShowsOldestTimeEvenWithoutWorker()
         {
             BeginWave();
             _wave.AdvanceTime(20f);
             Refresh();
 
-            Assert.That(_text.text, Does.Contain("Chýba pracovník"));
-            Assert.That(_text.text, Does.Not.Contain("Dlhé čakanie"));
+            Assert.That(_text.text, Does.Contain("Dlhé čakanie · 0:20"));
             Assert.That(_text.text, Does.Not.Contain("%").And.Not.Contain("Spokojnosť"));
+        }
+
+
+        [Test]
+        public void QueueHeadTimerUsesWaitingTimeAndFreezesOnPause()
+        {
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            ServiceDestination destination = _host.GetComponent<ServiceDestination>();
+            Transform canvas = _text.transform.parent.parent;
+            GameObject badge = new("Patience Badge", typeof(RectTransform));
+            badge.transform.SetParent(canvas, false);
+            var label = new GameObject("Time", typeof(RectTransform), typeof(TMPro.TextMeshProUGUI));
+            label.transform.SetParent(badge.transform, false);
+            var time = label.GetComponent<TMPro.TMP_Text>();
+            time.text = "0:00";
+            var fillObject = new GameObject("Sweep", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+            fillObject.transform.SetParent(badge.transform, false);
+            var fill = fillObject.GetComponent<UnityEngine.UI.Image>();
+            badge.SetActive(false);
+            Assign(_view, "PatienceBadge", badge.GetComponent<RectTransform>());
+            Assign(_view, "PatienceTime", time);
+            Assign(_view, "PatienceFill", fill);
+
+            Transform slot = new GameObject("Head slot").transform;
+            slot.SetParent(_host.transform, false);
+            var queue = typeof(RequestQueues).GetMethod("RegisterBuilding", flags)
+                .Invoke(_queues, new object[] { destination, new[] { slot }, slot });
+            var guest = new GameObject("Guest").AddComponent<CustomerWalk>();
+            guest.transform.SetParent(_host.transform, false);
+            _requests.Arrivals.RequestCreated += request => queue.GetType().GetMethod("Add", flags)
+                .Invoke(queue, new object[] { request, guest });
+            BeginWave();
+            var waitingSince = typeof(CustomerWalk).GetProperty("WaitingSinceSeconds", flags);
+            _wave.AdvanceTime(8f);
+            waitingSince.SetValue(guest, _wave.ElapsedSeconds);
+
+            _wave.AdvanceTime(10f);
+            Refresh();
+            Assert.That(time.text, Is.EqualTo("0:00"));
+            Assert.That(badge.activeSelf, Is.False);
+            _wave.AdvanceTime(10f);
+            Refresh();
+            Assert.That(time.text, Is.EqualTo("0:20"));
+            Assert.That(fill.fillAmount, Is.EqualTo(0.5f).Within(0.001f));
+            _wave.TryPause();
+            _wave.AdvanceTime(1000f);
+            Refresh();
+            Assert.That(time.text, Is.EqualTo("0:20"));
+            Assert.That(fill.fillAmount, Is.EqualTo(0.5f).Within(0.001f));
+            _wave.TryResume();
+            _wave.AdvanceTime(10f);
+            Refresh();
+            Assert.That(time.text, Is.EqualTo("0:30"));
+            Assert.That(fill.fillAmount, Is.Zero);
+
+            waitingSince.SetValue(guest, null);
+            Refresh();
+            Assert.That(badge.activeSelf, Is.False);
+            Assert.That(_text.text, Does.Not.Contain("Dlhé čakanie"));
         }
 
 

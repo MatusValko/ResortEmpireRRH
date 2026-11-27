@@ -163,6 +163,17 @@ namespace ResortEmpire.Requests
         }
 
 
+        internal bool TryGetWaitingHead(ServiceDestination destination, out Transform guest, out double waitingSince)
+        {
+            if (_buildingQueues.TryGetValue(destination, out BuildingQueue queue))
+                return queue.TryGetWaitingHead(out guest, out waitingSince);
+
+            guest = null;
+            waitingSince = 0d;
+            return false;
+        }
+
+
         internal BuildingQueue RegisterBuilding(ServiceDestination destination, Transform[] slots, Transform servicePoint)
         {
             BuildingQueue queue = new(destination, slots, servicePoint);

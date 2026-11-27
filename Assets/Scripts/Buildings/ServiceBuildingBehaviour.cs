@@ -44,6 +44,54 @@ namespace ResortEmpire.Buildings
         internal ServiceDestination Destination => _destination;
 
 
+        internal bool TryGetModelBounds(out Bounds bounds)
+        {
+            Transform model = FindModel();
+            bounds = default;
+            bool found = false;
+            if (model == null)
+                return false;
+
+            foreach (Renderer renderer in model.GetComponentsInChildren<Renderer>())
+            {
+                if (!renderer.enabled || renderer.name == "Grass")
+                    continue;
+
+                if (found)
+                    bounds.Encapsulate(renderer.bounds);
+                else
+                    bounds = renderer.bounds;
+
+                found = true;
+            }
+
+            return found;
+        }
+
+
+        internal Transform FindModel()
+        {
+            return transform.Find("Model") ?? transform.Find("pool_RRH") ?? transform.Find("boongalo_RRH");
+        }
+
+
+        internal Vector3 GetWorkerPosition()
+        {
+            Vector3 position = workerPoint.position;
+            float ground = float.NegativeInfinity;
+            foreach (RaycastHit hit in Physics.RaycastAll(position + Vector3.up * 0.05f, Vector3.down, 0.4f))
+            {
+                if (hit.collider.name is "Grass" or "Island")
+                    ground = Mathf.Max(ground, hit.point.y);
+            }
+
+            if (float.IsFinite(ground))
+                position.y = ground;
+
+            return position;
+        }
+
+
         public void ResetWorkerAssignment()
         {
             HasWorker = false;

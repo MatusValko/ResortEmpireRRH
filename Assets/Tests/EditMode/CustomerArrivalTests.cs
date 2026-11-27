@@ -80,12 +80,15 @@ namespace ResortEmpire.Tests
                 ready.Invoke(presentation, new object[] { second });
                 ready.Invoke(presentation, new object[] { third });
                 Assert.That(requestId.GetValue(second), Is.EqualTo(0L));
+                Send(ServiceType.Drinks, 3);
+                Assert.That(requestId.GetValue(second), Is.EqualTo(0L));
                 Send(ServiceType.Food, 2);
                 Assert.That(requestId.GetValue(second), Is.EqualTo(2L));
                 Assert.That(path.GetValue(second), Is.SameAs(foodPath));
                 Assert.That(requestId.GetValue(third), Is.EqualTo(0L));
 
-                Send(ServiceType.Drinks, 3);
+                queueField.FieldType.GetMethod("Clear", PrivateInstance).Invoke(queueField.GetValue(drinks), null);
+                presentationType.GetMethod("AssignReadyCustomers", PrivateInstance).Invoke(presentation, null);
                 Assert.That(requestId.GetValue(third), Is.EqualTo(3L));
                 Assert.That(path.GetValue(third), Is.SameAs(drinksPath));
             }

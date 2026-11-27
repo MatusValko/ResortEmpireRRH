@@ -37,6 +37,37 @@ namespace ResortEmpire.UI
 
         private float _uiScale;
 
+        private bool _usesWavePanel;
+
+        private float _wavePanelProgress;
+
+
+        internal RectTransform HudArea => SafeArea;
+
+        internal ServiceDestination[] HudDestinations => Destinations;
+
+        internal const float WavePanelScale = 1.5f;
+
+        internal float WavePanelWidth => SafeArea.rect.width * 0.16f * WavePanelScale;
+
+
+        internal void SetWavePanelProgress(float progress)
+        {
+            if (_usesWavePanel && Mathf.Approximately(_wavePanelProgress, progress))
+                return;
+
+            _usesWavePanel = true;
+            _wavePanelProgress = progress;
+            FrameResort(GetComponent<Canvas>());
+        }
+
+
+        internal void RestoreLegacyFraming()
+        {
+            _usesWavePanel = false;
+            FrameResort(GetComponent<Canvas>());
+        }
+
 
         private void Start()
         {
@@ -86,11 +117,23 @@ namespace ResortEmpire.UI
             Canvas.ForceUpdateCanvases();
             Vector2 safeSize = ModalSafeArea.rect.size;
             ModalWindow.sizeDelta = new Vector2(Mathf.Clamp(safeSize.x - 48f, 0f, 900f), Mathf.Clamp(safeSize.y - 48f, 0f, 720f));
+            FrameResort(canvas);
+            _screenSize = new Vector2Int(Screen.width, Screen.height);
+            _safeArea = safeArea;
+            _canvasPixels = canvas.pixelRect;
+            _uiScale = canvas.scaleFactor;
+        }
+
+
+        private void FrameResort(Canvas canvas)
+        {
             Vector2 resortSize = SafeArea.rect.size;
+            float bottom = _usesWavePanel ? Mathf.Min(72f, resortSize.y * 0.09f) : Mathf.Min(216f, resortSize.y * 0.3f);
+            float right = _usesWavePanel ? 20f + WavePanelWidth * _wavePanelProgress : Mathf.Min(320f, resortSize.x * 0.35f);
             ResortViewport.anchorMin = Vector2.zero;
             ResortViewport.anchorMax = Vector2.one;
-            ResortViewport.offsetMin = new Vector2(Mathf.Min(20f, resortSize.x * 0.02f), Mathf.Min(216f, resortSize.y * 0.3f));
-            ResortViewport.offsetMax = new Vector2(-Mathf.Min(320f, resortSize.x * 0.35f), -Mathf.Min(128f, resortSize.y * 0.2f));
+            ResortViewport.offsetMin = new Vector2(Mathf.Min(20f, resortSize.x * 0.02f), bottom);
+            ResortViewport.offsetMax = new Vector2(-right, -Mathf.Min(128f, resortSize.y * 0.2f));
             ResortViewport.GetWorldCorners(_corners);
             Vector2 bottomLeft = RectTransformUtility.WorldToScreenPoint(null, _corners[0]);
             Vector2 topRight = RectTransformUtility.WorldToScreenPoint(null, _corners[2]);
@@ -107,10 +150,6 @@ namespace ResortEmpire.UI
                 canvasPixels.y + viewport.y * canvasPixels.height,
                 viewport.width * canvasPixels.width, viewport.height * canvasPixels.height);
             FrameBuildings(canvas.scaleFactor, framingPixels);
-            _screenSize = new Vector2Int(Screen.width, Screen.height);
-            _safeArea = safeArea;
-            _canvasPixels = canvasPixels;
-            _uiScale = canvas.scaleFactor;
         }
 
 

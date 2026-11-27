@@ -15,11 +15,22 @@ public class Worker : MonoBehaviour
     [SerializeField] private WorkerState state = WorkerState.idle;
     private Coroutine moveCoroutine;
     private Animator animator;
+    private CapsuleCollider _body;
 
     private void Awake()
     {
         state = WorkerState.idle;
         animator = GetComponentInChildren<Animator>();
+        _body = GetComponent<CapsuleCollider>();
+    }
+
+    internal Vector3 GetStandingPosition(ServiceBuildingBehaviour building)
+    {
+        Vector3 position = building.GetWorkerPosition();
+        if (_body != null)
+            position.y += transform.position.y - _body.bounds.min.y;
+
+        return position;
     }
 
     public void MoveToBuilding(ServiceBuildingBehaviour building)
@@ -40,11 +51,10 @@ public class Worker : MonoBehaviour
     private IEnumerator SmoothMove(ServiceBuildingBehaviour building)
     {
         state = WorkerState.walk;
-        Vector3 targetPosition = building.workerPoint.position;
+        Vector3 targetPosition = GetStandingPosition(building);
 
         while (Vector3.Distance(transform.position, targetPosition) > 0.01f)
         {
-            targetPosition = building.workerPoint.position;
             Vector3 direction = targetPosition - transform.position;
             direction.y = 0f;
             if (direction.sqrMagnitude > 0.0001f)
@@ -64,7 +74,7 @@ public class Worker : MonoBehaviour
         building.HasWorker = true;
         building.assignedWorker = this;
         targetBuilding = null;
-        Quaternion finalRotation = Quaternion.Euler(0f, 180f, 0f);
+        Quaternion finalRotation = building.workerPoint.rotation;
         while (Quaternion.Angle(transform.rotation, finalRotation) > 0.5f)
         {
             transform.rotation = Quaternion.RotateTowards(transform.rotation, finalRotation, rotationSpeed * Time.deltaTime);

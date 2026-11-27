@@ -17,6 +17,8 @@ public class WorkersManagers : MonoBehaviour
     /// </summary>
     public event System.Action<Worker, ServiceBuildingBehaviour, ServiceBuildingBehaviour> WorkerAssigned;
 
+    internal System.Func<ServiceBuildingBehaviour, bool> OnBuildingTapped { get; set; }
+
     private bool isActive = true;
 
     [SerializeField] private Camera mainCamera;
@@ -36,6 +38,7 @@ public class WorkersManagers : MonoBehaviour
     private GameObject[] workers;
 
     private readonly List<RaycastResult> _uiRaycastResults = new();
+    private readonly Dictionary<ServiceBuildingBehaviour, Bounds> _modelHitBounds = new();
 
     void Start()
     {
@@ -53,6 +56,8 @@ public class WorkersManagers : MonoBehaviour
         foreach (GameObject buildingObject in buildings)
         {
             ServiceBuildingBehaviour building = buildingObject != null ? buildingObject.GetComponent<ServiceBuildingBehaviour>() : null;
+            if (building != null)
+                CacheModelHitBounds(building);
 
             if (CanAssignWorker(building))
             {
@@ -81,6 +86,18 @@ public class WorkersManagers : MonoBehaviour
         }
     }
 
+    private void CacheModelHitBounds(ServiceBuildingBehaviour building)
+    {
+        foreach (Collider collider in building.GetComponentsInChildren<Collider>())
+        {
+            if (collider.enabled && (interactableLayer.value & (1 << collider.gameObject.layer)) != 0)
+                return;
+        }
+
+        if (building.TryGetModelBounds(out Bounds bounds))
+            _modelHitBounds.Add(building, bounds);
+    }
+
     private void Awake()
     {
         if (mainCamera == null)
@@ -92,7 +109,7 @@ public class WorkersManagers : MonoBehaviour
         foreach (Transform point in WorkerSpawnPoints)
         {
             if (point != null)
-                Instantiate(WorkerPrefab, point.position, point.rotation, point.parent);
+                Instantiate(WorkerPrefab, point.position, point.rotation, transform.root);
         }
     }
 
@@ -150,9 +167,32 @@ public class WorkersManagers : MonoBehaviour
             }
 
             ServiceBuildingBehaviour building = hit.collider.GetComponentInParent<ServiceBuildingBehaviour>();
-            if (building != null && building.assignedWorker != null)
-                TryAssignWorker(GetAvailableBuilding(), building.assignedWorker);
+            if (building != null)
+                TapBuilding(building);
+
+            return;
         }
+
+        ServiceBuildingBehaviour nearest = null;
+        float nearestDistance = 100f;
+        foreach (var entry in _modelHitBounds)
+        {
+            if (entry.Key.isActiveAndEnabled && entry.Key.Destination?.IsAvailable == true
+                && entry.Value.IntersectRay(ray, out float distance) && distance < nearestDistance)
+            {
+                nearest = entry.Key;
+                nearestDistance = distance;
+            }
+        }
+
+        if (nearest != null)
+            TapBuilding(nearest);
+    }
+
+    private void TapBuilding(ServiceBuildingBehaviour building)
+    {
+        if (OnBuildingTapped?.Invoke(building) != true && building.assignedWorker != null)
+            TryAssignWorker(GetAvailableBuilding(), building.assignedWorker);
     }
 
     public void TryAssignWorker(ServiceBuildingBehaviour building, Worker worker)
@@ -172,7 +212,7 @@ public class WorkersManagers : MonoBehaviour
         }
 
         Transform position = building.workerPoint;
-        Worker worker = Instantiate(WorkerPrefab, position.position, position.rotation, transform);
+        Worker worker = Instantiate(WorkerPrefab, position.position, position.rotation, transform.root);
         System.Array.Resize(ref workers, workers.Length + 1);
         workers[workers.Length - 1] = worker.gameObject;
         PlaceWorker(building, worker);
@@ -185,7 +225,7 @@ public class WorkersManagers : MonoBehaviour
         building.HasWorker = true;
         building.assignedWorker = worker;
         worker.assignedBuilding = building;
-        worker.transform.position = building.workerPoint.position;
+        worker.transform.SetPositionAndRotation(worker.GetStandingPosition(building), building.workerPoint.rotation);
         building.Building?.SetWorkerAssigned(true);
     }
 
@@ -241,7 +281,7 @@ public class WorkersManagers : MonoBehaviour
             UI.SetActive(false);
     }
 
-    private bool CanAssignWorker(ServiceBuildingBehaviour building)
+    internal bool CanAssignWorker(ServiceBuildingBehaviour building)
     {
         if (building == null || !building.isActiveAndEnabled || building.workerPoint == null
             || building.HasWorker || building.assignedWorker != null)

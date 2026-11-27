@@ -39,13 +39,19 @@ namespace ResortEmpire.Waves
 
 
         public WaveController(WaveCatalog catalog)
+            : this(catalog, 1)
+        {
+        }
+
+
+        internal WaveController(WaveCatalog catalog, int startFromWave)
         {
             if (catalog == null)
                 throw new ArgumentNullException(nameof(catalog));
 
             _catalog = catalog;
-            CurrentWave = catalog.GetWave(1);
-            CurrentWaveNumber = 1;
+            CurrentWave = catalog.GetWave(startFromWave);
+            CurrentWaveNumber = startFromWave;
             State = WaveState.AwaitingWave;
         }
 

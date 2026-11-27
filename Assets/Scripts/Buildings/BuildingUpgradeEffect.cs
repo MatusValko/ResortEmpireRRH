@@ -31,16 +31,31 @@ namespace ResortEmpire.Buildings
         private ParticleSystem _burst;
 
 
-        private void Awake()
+        internal static void AttachToModel(ServiceBuildingBehaviour building, BuildingUpgradeEffect preset)
         {
-            if (Visual == null)
-                Visual = transform;
+            if (building.GetComponent<BuildingUpgradeEffect>() != null)
+                return;
 
-            _restScale = Visual.localScale;
+            Transform model = building.FindModel();
+            if (model == null)
+                return;
 
-            if (BurstPrefab != null)
-                CreateBurst();
+            var effect = building.gameObject.AddComponent<BuildingUpgradeEffect>();
+            effect.Visual = model;
+            if (preset != null)
+            {
+                effect.BurstPrefab = preset.BurstPrefab;
+                effect.Duration = preset.Duration;
+                effect.Strength = preset.Strength;
+            }
+
+            if (building.TryGetModelBounds(out Bounds bounds))
+            {
+                Vector3 origin = new(bounds.center.x, bounds.max.y + 0.25f, bounds.center.z);
+                effect.BurstOffset = origin - building.transform.position;
+            }
         }
+
 
         private void Start()
         {
@@ -51,6 +66,13 @@ namespace ResortEmpire.Buildings
 
                 return;
             }
+
+            if (Visual == null)
+                Visual = transform;
+
+            _restScale = Visual.localScale;
+            if (BurstPrefab != null)
+                CreateBurst();
 
             _building.Upgraded += OnUpgraded;
         }

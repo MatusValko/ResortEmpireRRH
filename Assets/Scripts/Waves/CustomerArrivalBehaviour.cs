@@ -23,8 +23,11 @@ namespace ResortEmpire.Waves
 
             private readonly List<CustomerWalk> _customers = new();
             private BuildingQueue _queue;
+            private Vector3[] _approach;
+            private Vector3[] _serviceApproach;
 
             public ServiceType Service => Destination.Service;
+            public bool CanAdmit => _queue.HasRoom;
             public IReadOnlyList<CustomerWalk> Customers => _customers;
             public bool IsConfigured => Destination != null && Waypoints is { Length: > 0 }
                 && Array.TrueForAll(Waypoints, point => point != null)
@@ -40,10 +43,46 @@ namespace ResortEmpire.Waves
                 _queue = queues.RegisterBuilding(Destination, slots, ServicePoint);
             }
 
+            public void FollowFootpath(Transform footpath, Vector3 shoreExit, Vector3 plaza)
+            {
+                Vector3 a = PathEnd(footpath, -0.5f);
+                Vector3 b = PathEnd(footpath, 0.5f);
+                Vector3 laneEntry = (a - plaza).sqrMagnitude < (b - plaza).sqrMagnitude ? a : b;
+                _approach = new[] { shoreExit, plaza, laneEntry };
+                _serviceApproach = GetServiceApproach();
+            }
+
+            private Vector3[] GetServiceApproach()
+            {
+                Transform stair = Destination.transform.Find("boongalo_RRH/Cube.058");
+                if (Service == ServiceType.OceanView && stair != null)
+                {
+                    // Centre of the imported staircase, measured in the stair mesh's local coordinates.
+                    return new[]
+                    {
+                        stair.TransformPoint(0f, -0.45f, 3.50f),
+                        stair.TransformPoint(0f, -0.322f, 2.95f),
+                        stair.TransformPoint(0f, -0.138f, 2.67f),
+                        stair.TransformPoint(0f, 0.083f, 2.28f),
+                        stair.TransformPoint(0f, 0.083f, 1.90f),
+                        stair.TransformPoint(0f, 0.083f, 0.35f),
+                        stair.TransformPoint(0f, 0.083f, -0.55f)
+                    };
+                }
+
+                Vector3 head = QueueLine.GetChild(0).position;
+                Vector3 entrance = Waypoints[^1].position;
+                Vector3 service = ServicePoint.position;
+                Vector3 forward = entrance - head;
+                return Vector3.Dot(service - entrance, forward) < 0f
+                    ? new[] { service }
+                    : new[] { entrance, service };
+            }
+
             public void Assign(CustomerWalk customer, RequestArrival request)
             {
                 _customers.Add(customer);
-                customer.SendToBuilding(request.Id, Waypoints, _queue);
+                customer.SendToBuilding(request.Id, Waypoints, _queue, _approach, _serviceApproach);
                 _queue.Add(request, customer);
             }
 
@@ -63,9 +102,24 @@ namespace ResortEmpire.Waves
 
         [SerializeField] private Transform ShipExit;
 
+        [SerializeField, Tooltip("Optional. Starting position and rotation of the ship before it sails in.")]
+        private Transform ShipSpawn;
+
+        [SerializeField, Tooltip("Optional. A waypoint in open water between the spawn and the dock.")]
+        private Transform ShipApproach;
+
+        [SerializeField, Tooltip("Optional. The ship's position and rotation while unloading.")]
+        private Transform Dock;
+
         [SerializeField] private Transform Shore;
 
-        [SerializeField] private Transform StagingArea;
+        [SerializeField, Tooltip("Centre and orientation of the passengers' waiting area.")]
+        private Transform StagingArea;
+
+        [SerializeField, Tooltip("Width and depth of the waiting area in metres.")]
+        private Vector2 WaitingAreaSize = new(3.4f, 3f);
+
+        [SerializeField, Min(0)] private int MaxWaitingGuests = 8;
 
         [SerializeField] private CustomerWalk CustomerPrefab;
 
@@ -90,6 +144,8 @@ namespace ResortEmpire.Waves
         private Transform _customers;
         private int _ashore;
         private int _assigned;
+        private Transform _shorePath;
+        private ShoreWaitingArea _waitingArea;
 
 
         internal (int Aboard, int Ashore, int Walking, int AtBuilding) GetCustomerLocations(ServiceType service)
@@ -102,6 +158,9 @@ namespace ResortEmpire.Waves
             int atBuilding = 0;
             foreach (CustomerWalk customer in route.Customers)
             {
+                if (!customer.IsAshore)
+                    continue;
+
                 if (!customer.IsAtBuilding && !customer.WaitingSinceSeconds.HasValue)
                     walking++;
                 else if (customer.IsAtBuilding && (!Requests.Queues.TryGetServiceRecord(customer.RequestId, out RequestServiceRecord record)
@@ -117,6 +176,9 @@ namespace ResortEmpire.Waves
         {
             if (Waves == null || Waves.Controller == null || Requests == null || Requests.Arrivals == null || Requests.Queues == null
                 || Ship == null || transform.IsChildOf(Ship) || ShipExit == null || Shore == null
+                || (ShipSpawn != null && ShipSpawn.IsChildOf(Ship))
+                || (ShipApproach != null && ShipApproach.IsChildOf(Ship))
+                || (Dock != null && Dock.IsChildOf(Ship))
                 || StagingArea == null || CustomerPrefab == null || Routes == null || Routes.Length == 0
                 || !(ShipSpeed > 0f) || !(UnloadingInterval > 0f))
             {
@@ -136,10 +198,67 @@ namespace ResortEmpire.Waves
             foreach (Route route in Routes)
                 route.RegisterQueue(Requests.Queues);
 
+            Transform resort = BindFootpaths();
+            _waitingArea = new ShoreWaitingArea(StagingArea, WaitingAreaSize, _shorePath, Shore, resort);
+
             _wave = Waves.Controller;
             _arrivals = Requests.Arrivals;
             ResetShip();
             Subscribe();
+        }
+
+
+        private Transform BindFootpaths()
+        {
+            Transform resort = transform.root;
+            Transform paths = resort.Find("Environment/Footpaths");
+            if (paths == null)
+            {
+                foreach (GameObject root in gameObject.scene.GetRootGameObjects())
+                {
+                    paths = root.transform.Find("Environment/Footpaths");
+                    if (paths == null)
+                        continue;
+
+                    resort = root.transform;
+                    break;
+                }
+            }
+
+            if (paths == null)
+                return resort;
+
+            Transform plaza = paths.Find("Round Plaza");
+            Transform shorePath = paths.Find("Shore Path");
+            if (plaza == null || shorePath == null)
+                return resort;
+
+            _shorePath = shorePath;
+            Vector3 endA = PathEnd(_shorePath, -0.5f);
+            Vector3 endB = PathEnd(_shorePath, 0.5f);
+            Vector3 shoreExit = (endA - plaza.position).sqrMagnitude < (endB - plaza.position).sqrMagnitude ? endA : endB;
+            foreach (Transform footpath in paths)
+            {
+                ServiceType? service = footpath.name.TrimEnd() switch
+                {
+                    "Reception Path" => ServiceType.Rooms,
+                    "Restaurant Path" => ServiceType.Food,
+                    "Beach Bar Path" => ServiceType.Drinks,
+                    "Pool Path" => ServiceType.Relax,
+                    "Bungalows Path" => ServiceType.OceanView,
+                    _ => null
+                };
+                if (service.HasValue && _routes.TryGetValue(service.Value, out Route route))
+                    route.FollowFootpath(footpath, shoreExit, plaza.position);
+            }
+
+            return resort;
+        }
+
+
+        private static Vector3 PathEnd(Transform path, float end)
+        {
+            return path.TransformPoint(0f, 0.5f, end);
         }
 
 
@@ -177,52 +296,117 @@ namespace ResortEmpire.Waves
                 return;
 
             _waitingRequests.Enqueue(request);
-            AssignNextCustomer();
+            AssignReadyCustomers();
         }
 
 
-        private void OnCustomerAshore()
+        private void OnCustomerAshore(CustomerWalk customer)
         {
             _ashore++;
+            if (customer.RequestId != 0)
+                _assigned++;
         }
 
 
         private void OnCustomerReady(CustomerWalk customer)
         {
             _readyCustomers.Enqueue(customer);
-            AssignNextCustomer();
+            AssignReadyCustomers();
         }
 
 
-        private void AssignNextCustomer()
+        private void Update()
         {
-            if (!_readyCustomers.TryPeek(out CustomerWalk customer) || !_waitingRequests.TryDequeue(out RequestArrival request))
-                return;
+            if (_wave?.State == WaveState.WaveActive)
+                AssignReadyCustomers();
+        }
 
-            _readyCustomers.Dequeue();
+
+        private void AssignReadyCustomers()
+        {
+            while (_readyCustomers.TryPeek(out CustomerWalk customer) && TryTakeRequest(out RequestArrival request))
+            {
+                _readyCustomers.Dequeue();
+                Assign(customer, request);
+            }
+        }
+
+
+        private bool TryTakeRequest(out RequestArrival request)
+        {
+            bool found = false;
+            request = default;
+            int count = _waitingRequests.Count;
+            for (int i = 0; i < count; i++)
+            {
+                RequestArrival candidate = _waitingRequests.Dequeue();
+                if (!found && _routes[candidate.Service].CanAdmit)
+                {
+                    request = candidate;
+                    found = true;
+                }
+                else
+                    _waitingRequests.Enqueue(candidate);
+            }
+
+            return found;
+        }
+
+
+        private void Assign(CustomerWalk customer, RequestArrival request)
+        {
             _routes[request.Service].Assign(customer, request);
-            _assigned++;
+            if (customer.IsAshore)
+                _assigned++;
         }
 
 
         private IEnumerator RunArrival()
         {
             Ship.gameObject.SetActive(true);
-            yield return SailTo(DockPosition, eastClearance: 6f);
+            Vector3 dock = Dock != null ? Dock.position : DockPosition;
+            Quaternion heading = Dock != null ? Dock.rotation : DockRotation;
+            if (ShipApproach != null)
+                yield return SailTo(ShipApproach.position, ShipApproach.rotation);
+
+            bool useDefaultRoute = ShipSpawn == null && ShipApproach == null && Dock == null;
+            yield return SailTo(dock, heading, eastClearance: useDefaultRoute ? 6f : 0f);
 
             int total = (int)_arrivals.TotalPlanned;
             CustomerWalk lastCustomer = null;
-            int columns = Mathf.CeilToInt(Mathf.Sqrt(total * 2f));
+            _waitingArea.Generate(MaxWaitingGuests);
+            Vector3? shoreAccess = ProjectOntoShorePath(Shore.position);
             for (int spawned = 0; spawned < total; spawned++)
             {
+                RequestArrival request = default;
+                ShoreWaitingArea.Spot spot = null;
+                bool direct = false;
+                while (!direct && spot == null)
+                {
+                    if (_wave.State == WaveState.WaveActive)
+                    {
+                        AssignReadyCustomers();
+                        direct = TryTakeRequest(out request);
+                        if (!direct)
+                            spot = _waitingArea.Reserve();
+                    }
+
+                    if (!direct && spot == null)
+                        yield return null;
+                }
+
                 lastCustomer = Instantiate(CustomerPrefab, ShipExit.position, ShipExit.rotation, _customers);
-                lastCustomer.Begin(_wave, Shore.position, GetStagingPosition(spawned, columns), OnCustomerAshore, OnCustomerReady);
+                if (direct)
+                    Assign(lastCustomer, request);
+
+                lastCustomer.Begin(_wave, Shore.position, shoreAccess, spot, OnCustomerAshore, OnCustomerReady);
 
                 if (spawned + 1 == total)
                     break;
 
                 float interval = 0f;
-                while (interval < UnloadingInterval)
+                while (interval < UnloadingInterval
+                    || (lastCustomer.transform.position - ShipExit.position).sqrMagnitude < 0.36f * 0.36f)
                 {
                     yield return null;
                     if (_wave.State != WaveState.WavePaused)
@@ -233,12 +417,12 @@ namespace ResortEmpire.Waves
             while (lastCustomer != null && !lastCustomer.IsAshore)
                 yield return null;
 
-            yield return SailTo(ExitPosition);
+            yield return SailTo(ExitPosition, heading);
             ResetShip();
         }
 
 
-        private IEnumerator SailTo(Vector3 destination, float eastClearance = 0f)
+        private IEnumerator SailTo(Vector3 destination, Quaternion heading, float eastClearance = 0f)
         {
             Vector3 origin = Ship.position;
             Quaternion rotation = Ship.rotation;
@@ -256,20 +440,55 @@ namespace ResortEmpire.Waves
                 Vector3 position = Vector3.Lerp(origin, destination, progress);
                 position.x += 4f * eastClearance * progress * (1f - progress);
                 Ship.SetPositionAndRotation(position,
-                    Quaternion.Slerp(rotation, DockRotation, progress));
+                    Quaternion.Slerp(rotation, heading, progress));
             }
 
-            Ship.SetPositionAndRotation(destination, DockRotation);
+            Ship.SetPositionAndRotation(destination, heading);
         }
 
 
-        private Vector3 GetStagingPosition(int index, int columns)
+        private void OnDrawGizmosSelected()
         {
-            const float spacing = 0.3f;
-            float x = (index % columns - (columns - 1) / 2f) * spacing;
-            float z = index / columns * spacing;
+            if (ShipSpawn != null || ShipApproach != null)
+            {
+                Gizmos.color = Color.cyan;
+                Vector3 spawn = ShipSpawn != null ? ShipSpawn.position : StartPosition;
+                Vector3 dock = Dock != null ? Dock.position : DockPosition;
+                Vector3 next = ShipApproach != null ? ShipApproach.position : dock;
+                Gizmos.DrawSphere(spawn, 0.18f);
+                Gizmos.DrawLine(spawn, next);
+                if (ShipApproach != null)
+                {
+                    Gizmos.DrawSphere(next, 0.18f);
+                    Gizmos.DrawLine(next, dock);
+                }
+            }
 
-            return StagingArea.TransformPoint(x, 0f, z);
+            if (Dock != null)
+            {
+                Gizmos.color = Color.cyan;
+                Gizmos.DrawSphere(Dock.position, 0.18f);
+                Gizmos.DrawRay(Dock.position, Dock.forward);
+            }
+
+            if (StagingArea == null)
+                return;
+
+            Matrix4x4 previous = Gizmos.matrix;
+            Gizmos.matrix = Matrix4x4.TRS(StagingArea.position, StagingArea.rotation, Vector3.one);
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireCube(Vector3.zero, new Vector3(WaitingAreaSize.x, 0.05f, WaitingAreaSize.y));
+            Gizmos.matrix = previous;
+        }
+
+
+        private Vector3? ProjectOntoShorePath(Vector3 position)
+        {
+            if (_shorePath == null)
+                return null;
+
+            float z = Mathf.Clamp(_shorePath.InverseTransformPoint(position).z, -0.5f, 0.5f);
+            return PathEnd(_shorePath, z);
         }
 
 
@@ -299,7 +518,10 @@ namespace ResortEmpire.Waves
                 return;
 
             Ship.gameObject.SetActive(false);
-            Ship.SetPositionAndRotation(StartPosition, StartRotation);
+            if (ShipSpawn != null)
+                Ship.SetPositionAndRotation(ShipSpawn.position, ShipSpawn.rotation);
+            else
+                Ship.SetPositionAndRotation(StartPosition, StartRotation);
         }
 
 

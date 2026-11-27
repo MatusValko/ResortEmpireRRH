@@ -23,6 +23,10 @@ namespace ResortEmpire.Waves
 
         private Transform[] _path;
 
+        private Vector3[] _approach;
+
+        private Vector3[] _serviceApproach;
+
         private BuildingQueue _queue;
 
         private Transform _queueSlot;
@@ -44,19 +48,22 @@ namespace ResortEmpire.Waves
             && (transform.position - _queueSlot.position).sqrMagnitude <= 0.0001f;
 
 
-        internal void Begin(IWaveContext wave, Vector3 shore, Vector3 stagingPosition,
-            Action onAshore, Action<CustomerWalk> onReady)
+        internal void Begin(IWaveContext wave, Vector3 shore, Vector3? shoreAccess, ShoreWaitingArea.Spot spot,
+            Action<CustomerWalk> onAshore, Action<CustomerWalk> onReady)
         {
             _wave = wave;
-            StartCoroutine(FollowRoute(shore, stagingPosition, onAshore, onReady));
+            StartCoroutine(FollowRoute(shore, shoreAccess, spot, onAshore, onReady));
         }
 
 
-        internal void SendToBuilding(long requestId, Transform[] path, BuildingQueue queue)
+        internal void SendToBuilding(long requestId, Transform[] path, BuildingQueue queue,
+            Vector3[] approach, Vector3[] serviceApproach)
         {
             RequestId = requestId;
             _path = path;
             _queue = queue;
+            _approach = approach;
+            _serviceApproach = serviceApproach;
         }
 
 
@@ -74,26 +81,48 @@ namespace ResortEmpire.Waves
         }
 
 
-        private IEnumerator FollowRoute(Vector3 shore, Vector3 stagingPosition, Action onAshore, Action<CustomerWalk> onReady)
+        private IEnumerator FollowRoute(Vector3 shore, Vector3? shoreAccess, ShoreWaitingArea.Spot spot,
+            Action<CustomerWalk> onAshore, Action<CustomerWalk> onReady)
         {
             SetWalking(true);
             yield return MoveTo(shore);
             IsAshore = true;
-            onAshore();
-            yield return MoveTo(stagingPosition);
+            onAshore(this);
+            if (_queueSlot == null)
+                onReady(this);
 
-            SetWalking(false);
-            onReady(this);
-            while (_queueSlot == null || _wave.State == WaveState.WavePaused)
+            Vector3 sideOffset = Vector3.zero;
+            if (spot != null && _queueSlot == null)
             {
-                Animator.speed = _wave.State == WaveState.WavePaused ? 0f : 1f;
-                yield return null;
+                sideOffset = spot.SideOffset;
+                if (shoreAccess.HasValue)
+                    yield return MoveTo(shoreAccess.Value + sideOffset);
+
+                yield return MoveTo(spot.Access);
+                yield return MoveTo(spot.Position);
+                yield return WaitOnShore(spot.Position);
+                yield return MoveTo(spot.Access);
+            }
+            else if (shoreAccess.HasValue)
+            {
+                yield return MoveTo(shoreAccess.Value);
             }
 
+            if (spot != null)
+                spot.InUse = false;
+
             SetWalking(true);
-            // The last waypoint is the entrance, reached only after the queue.
-            for (int i = 0; i < _path.Length - 1; i++)
-                yield return MoveTo(_path[i].position);
+            if (_approach != null)
+            {
+                yield return MoveTo(_approach[0] + sideOffset);
+                for (int i = 1; i < _approach.Length; i++)
+                    yield return MoveTo(_approach[i]);
+            }
+            else
+            {
+                for (int i = 0; i < _path.Length - 1; i++)
+                    yield return MoveTo(_path[i].position);
+            }
 
             SetWalking(false);
             while (_wave.State == WaveState.WavePaused || !_queue.CanEnterLane(this))
@@ -106,11 +135,44 @@ namespace ResortEmpire.Waves
             yield return FollowQueue();
 
             SetWalking(true);
-            yield return MoveTo(_path[_path.Length - 1].position);
-            yield return MoveTo(_servicePoint.position);
+            if (_serviceApproach != null)
+            {
+                foreach (Vector3 point in _serviceApproach)
+                    yield return MoveTo(point);
+            }
+            else
+            {
+                yield return MoveTo(_path[^1].position);
+                yield return MoveTo(_servicePoint.position);
+            }
 
             IsAtBuilding = true;
             Animator.gameObject.SetActive(false);
+        }
+
+
+        private IEnumerator WaitOnShore(Vector3 home)
+        {
+            while (_queueSlot == null)
+            {
+                SetWalking(false);
+                double nextWalk = _wave.ElapsedSeconds + UnityEngine.Random.Range(1.5f, 4f);
+                while (_queueSlot == null && _wave.ElapsedSeconds < nextWalk)
+                {
+                    Animator.speed = _wave.State == WaveState.WavePaused ? 0f : 1f;
+                    yield return null;
+                }
+
+                if (_queueSlot != null)
+                    break;
+
+                Vector2 offset = UnityEngine.Random.insideUnitCircle * ShoreWaitingArea.WanderRadius;
+                SetWalking(true);
+                yield return MoveTo(home + new Vector3(offset.x, 0f, offset.y), 0.38f);
+            }
+
+            SetWalking(true);
+            yield return MoveTo(home, 0.65f);
         }
 
 
@@ -146,14 +208,14 @@ namespace ResortEmpire.Waves
         }
 
 
-        private IEnumerator MoveTo(Vector3 destination)
+        private IEnumerator MoveTo(Vector3 destination, float speedMultiplier = 1f)
         {
             while ((destination - transform.position).sqrMagnitude > 0.0001f)
             {
                 bool paused = _wave.State == WaveState.WavePaused;
                 Animator.speed = paused ? 0f : 1f;
                 if (!paused)
-                    StepTowards(destination);
+                    StepTowards(destination, speedMultiplier);
 
                 yield return null;
             }
@@ -162,7 +224,7 @@ namespace ResortEmpire.Waves
         }
 
 
-        private void StepTowards(Vector3 destination)
+        private void StepTowards(Vector3 destination, float speedMultiplier = 1f)
         {
             Vector3 direction = destination - transform.position;
             direction.y = 0f;
@@ -172,7 +234,7 @@ namespace ResortEmpire.Waves
                 transform.rotation = Quaternion.RotateTowards(transform.rotation, target, RotationSpeed * Time.deltaTime);
             }
 
-            transform.position = Vector3.MoveTowards(transform.position, destination, MoveSpeed * Time.deltaTime);
+            transform.position = Vector3.MoveTowards(transform.position, destination, MoveSpeed * speedMultiplier * Time.deltaTime);
         }
 
 

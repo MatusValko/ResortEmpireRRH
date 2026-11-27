@@ -96,6 +96,9 @@ bod obsluhy. Simulácia bez vizuálnych hostí používa logické FIFO rady pod�
 - `GetWaitingCount(destination)` a `TryPeekWaiting` čítajú počet a čas hostí,
   ktorí už obsadili pozíciu. Hosť na ceste a hosť čakajúci na zhromaždisku
   sa započítavajú do nevyriešených požiadaviek vlny.
+- Nad čelom radu sa po uplynutí `PatienceGrace` zobrazí osobný čas a kruhový
+  ukazovateľ trpezlivosti. Klesá po `PatienceLimit` a pri rezervovaní miesta sa
+  skryje. Nad radom sa zobrazuje najdlhší aktuálny čas čakania.
 
 Buildings má implementovať `IRequestReceiver.TryAccept(QueuedRequest)`:
 vrátiť `true` až po prijatí a rezervovaní miesta, pri plnej budove `false`.

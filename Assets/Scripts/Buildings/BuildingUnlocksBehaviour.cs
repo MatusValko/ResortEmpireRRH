@@ -6,6 +6,7 @@ using UnityEngine;
 namespace ResortEmpire.Buildings
 {
     [DisallowMultipleComponent]
+    [DefaultExecutionOrder(100)] // WorkersManager must initialize before a test wave can open buildings.
     public sealed class BuildingUnlocksBehaviour : MonoBehaviour
     {
         [Serializable]
@@ -21,12 +22,24 @@ namespace ResortEmpire.Buildings
                 && FirstWave >= 2 && FirstWave <= WaveCatalog.RequiredWaveCount && LockMarker != null;
 
 
-            public void Refresh(int waveNumber, WorkersManagers workers)
+            public void ConfigurePresentation(BuildingUpgradeEffect preset)
+            {
+                if (Building.TryGetModelBounds(out Bounds bounds))
+                    LockMarker.transform.position = new Vector3(bounds.center.x, bounds.max.y + 0.45f, bounds.center.z);
+
+                BuildingUpgradeEffect.AttachToModel(Building, preset);
+            }
+
+
+            public bool Refresh(int waveNumber, WorkersManagers workers, LockedBuildingVisuals visuals)
             {
                 if (waveNumber >= FirstWave && !Building.Building.IsUnlocked)
                     workers.TryOpenWithWorker(Building);
 
-                LockMarker.SetActive(!Building.Building.IsUnlocked);
+                bool locked = !Building.Building.IsUnlocked;
+                LockMarker.SetActive(locked);
+                visuals.SetLocked(Building.FindModel(), locked);
+                return locked;
             }
         }
 
@@ -39,6 +52,8 @@ namespace ResortEmpire.Buildings
 
 
         private WaveController _wave;
+
+        private LockedBuildingVisuals _visuals;
 
 
         private void Start()
@@ -53,6 +68,10 @@ namespace ResortEmpire.Buildings
             }
 
             _wave = Waves.Controller;
+            BuildingUpgradeEffect preset = FindFirstObjectByType<BuildingUpgradeEffect>();
+            foreach (UnlockEntry entry in Entries)
+                entry.ConfigurePresentation(preset);
+
             Subscribe();
         }
 
@@ -71,6 +90,12 @@ namespace ResortEmpire.Buildings
         }
 
 
+        private void OnDestroy()
+        {
+            _visuals?.Dispose();
+        }
+
+
         private void Subscribe()
         {
             _wave.WaveChanged += Refresh;
@@ -80,8 +105,16 @@ namespace ResortEmpire.Buildings
 
         private void Refresh()
         {
+            _visuals ??= new LockedBuildingVisuals();
+            bool anyLocked = false;
             foreach (UnlockEntry entry in Entries)
-                entry.Refresh(_wave.CurrentWaveNumber, Workers);
+                anyLocked |= entry.Refresh(_wave.CurrentWaveNumber, Workers, _visuals);
+
+            if (!anyLocked)
+            {
+                _visuals.Dispose();
+                _visuals = null;
+            }
         }
     }
 }

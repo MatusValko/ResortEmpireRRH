@@ -26,6 +26,8 @@ namespace ResortEmpire.Requests
 
         internal ServiceDestination Destination { get; }
 
+        internal bool HasRoom => _line.Count < _slots.Length;
+
 
         internal BuildingQueue(ServiceDestination destination, Transform[] slots, Transform servicePoint)
         {
@@ -71,6 +73,19 @@ namespace ResortEmpire.Requests
             }
 
             return earliest < double.PositiveInfinity;
+        }
+
+
+        internal bool TryGetWaitingHead(out Transform guest, out double waitingSince)
+        {
+            guest = null;
+            waitingSince = 0d;
+            if (_line.Count == 0 || _line[0].Customer.WaitingSinceSeconds is not double since)
+                return false;
+
+            guest = _line[0].Customer.transform;
+            waitingSince = since;
+            return true;
         }
 
 
